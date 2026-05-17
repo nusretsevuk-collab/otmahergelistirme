@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Maliyet Uygulaması (Dinamik Salata + Dinamik Paketleme)</title>
+<style>
+:root{--bg:#0b1220;--panel:#0f1a2e;--text:#e7eefc;--muted:#a7b7d6;--accent:#34d399;--warn:#fbbf24;--danger:#fb7185;--line:rgba(255,255,255,.09);--shadow:0 10px 30px rgba(0,0,0,.35);--radius:16px;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+body{margin:0;background:radial-gradient(1200px 800px at 20% 10%,#12264b 0%,var(--bg) 55%);color:var(--text)}
+header{padding:16px 18px;position:sticky;top:0;backdrop-filter:blur(8px);background:rgba(11,18,32,.75);border-bottom:1px solid var(--line);z-index:5}
+header h1{font-size:16px;margin:0;font-weight:650;letter-spacing:.2px}
+header .sub{font-size:12px;color:var(--muted);margin-top:4px}
+main{padding:18px;display:grid;grid-template-columns:380px 1fr;gap:14px;align-items:start}
+@media (max-width:980px){main{grid-template-columns:1fr}}
+.card{background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.015));border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.card .hd{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px}
+.card .hd h2{margin:0;font-size:13px;font-weight:700}
+.card .bd{padding:12px 14px}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.col{flex:1 1 140px}
+label{display:block;font-size:11px;color:var(--muted);margin-bottom:6px}
+input,select,button{width:100%;box-sizing:border-box;background:rgba(0,0,0,.18);border:1px solid var(--line);border-radius:12px;color:var(--text);padding:10px 10px;outline:none}
+input:focus,select:focus{border-color:rgba(52,211,153,.65);box-shadow:0 0 0 3px rgba(52,211,153,.18)}
+button{cursor:pointer;font-weight:700;background:rgba(52,211,153,.15);border-color:rgba(52,211,153,.35)}
+button:hover{background:rgba(52,211,153,.22)}
+.btn2{background:rgba(251,191,36,.14);border-color:rgba(251,191,36,.35)}
+.btn2:hover{background:rgba(251,191,36,.22)}
+.btndanger{background:rgba(251,113,133,.12);border-color:rgba(251,113,133,.35)}
+.btndanger:hover{background:rgba(251,113,133,.20)}
+.kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media (max-width:980px){.kpi{grid-template-columns:repeat(2,1fr)}}
+.k{background:rgba(0,0,0,.18);border:1px solid var(--line);border-radius:14px;padding:10px}
+.k .t{font-size:11px;color:var(--muted)}
+.k .v{margin-top:6px;font-size:18px;font-weight:800}
+.k .v.warn{color:var(--warn)}
+.k .v.acc{color:var(--accent)}
+.k .v.dng{color:var(--danger)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{padding:8px 8px;border-bottom:1px solid var(--line);text-align:left}
+th{color:#cfe2ff;font-weight:750;font-size:11px;text-transform:uppercase;letter-spacing:.06em;background:rgba(0,0,0,.14)}
+tr:hover td{background:rgba(255,255,255,.02)}
+.mini{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.35}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:rgba(0,0,0,.18);font-size:11px;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:980px){.grid2{grid-template-columns:1fr}}
+.tight input{padding:8px 10px;border-radius:10px}
+.right{text-align:right}
+.muted{color:var(--muted)}
+.ok{color:var(--accent)}
+.warn{color:var(--warn)}
+.dng{color:var(--danger)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Maliyet Uygulaması — Dinamik Salata + Dinamik Paketleme</h1>
+  <div class="sub">Sabit 20/29 gibi değerler yok. Her şey reçete + birim fiyatlarla hesaplanır. (Offline çalışır, Kaydet/Yükle ile hafızaya alır)</div>
+</header>
+
+<main>
+  <section class="card">
+    <div class="hd"><h2>Ayarlar</h2><span class="pill" id="statePill">Durum: hazır</span></div>
+    <div class="bd">
+      <div class="row">
+        <div class="col"><label>Komisyon % (c)</label><input id="c" type="number" step="0.1" value="10"></div>
+        <div class="col"><label>Satış KDV % (v)</label><input id="v" type="number" step="0.1" value="10"></div>
+        <div class="col"><label>Komisyon KDV %</label><input id="cv" type="number" step="0.1" value="18"></div>
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <div class="col"><label>Net gelir katsayısı</label><input id="katsayi" type="number" step="0.001" value="0.791"></div>
+        <div class="col" style="display:flex; align-items:end;"><button id="calcK">Katsayıyı hesapla</button></div>
+      </div>
+
+      <div class="mini">Katsayı mantığı: <span class="muted">Etiket (KDV dahil)</span> × <span class="ok">katsayı</span> = <span class="muted">Net gelir</span> (platform kesintileri + KDV sonrası).<br/>Not: Senin tablondaki doğrulanmış değer: <b>0,791</b>.</div>
+
+      <hr style="border:0;border-top:1px solid var(--line); margin:14px 0;"/>
+
+      <div class="row">
+        <div class="col"><label>Hedef Net Kâr (Porsiyon / 500 g)</label><input id="targetSmall" type="number" step="1" value="135"></div>
+        <div class="col"><label>Hedef Net Kâr (1 kg)</label><input id="targetKg" type="number" step="1" value="220"></div>
+      </div>
+
+      <div class="row" style="margin-top:10px;">
+        <div class="col"><button id="saveBtn">Kaydet</button></div>
+        <div class="col"><button class="btn2" id="loadBtn">Yükle</button></div>
+        <div class="col"><button class="btndanger" id="resetBtn">Sıfırla</button></div>
+      </div>
+
+      <div class="mini">Kaydet/Yükle tarayıcı hafızasına (localStorage) yazar/okur.</div>
+    </div>
+  </section>
+
+  <section style="display:grid; gap:14px;">
+    <section class="card">
+      <div class="hd"><h2>Hızlı Hesap</h2><div class="pill">Seç → maliyetleri gör → etiket fiyatını üret</div></div>
+      <div class="bd">
+        <div class="row">
+          <div class="col"><label>Ürün</label><select id="urunSel"></select></div>
+          <div class="col"><label>Boy</label><select id="boySel"></select></div>
+          <div class="col"><label>Adet</label><input id="adetSel" type="number" step="1" value="1" min="1"></div>
+          <div class="col"><label>Ekstra Ayran (adet)</label><input id="ayranSel" type="number" step="1" value="0" min="0"></div>
+          <div class="col"><label>Ekmek (adet)</label><input id="ekmekSel" type="number" step="1" value="1" min="0"></div>
+        </div>
+
+        <div class="kpi" style="margin-top:12px;">
+          <div class="k"><div class="t">Et Maliyeti</div><div class="v" id="kEt">-</div></div>
+          <div class="k"><div class="t">Salata Maliyeti</div><div class="v" id="kSalata">-</div></div>
+          <div class="k"><div class="t">Paketleme Maliyeti</div><div class="v" id="kPack">-</div></div>
+          <div class="k"><div class="t">Toplam Maliyet</div><div class="v warn" id="kTop">-</div></div>
+        </div>
+
+        <div class="kpi" style="margin-top:10px;">
+          <div class="k"><div class="t">Hedef Net Kâr</div><div class="v acc" id="kHedef">-</div></div>
+          <div class="k"><div class="t">Önerilen Etiket (KDV dahil)</div><div class="v acc" id="kEtiket">-</div></div>
+          <div class="k"><div class="t">Net Gelir (Etiket×katsayı)</div><div class="v" id="kNetGelir">-</div></div>
+          <div class="k"><div class="t">Net Kâr</div><div class="v" id="kNetKar">-</div></div>
+        </div>
+
+        <div class="mini">Net kâr hesabı: <b>Net gelir = Etiket × katsayı</b> → <b>Net kâr = Net gelir - Toplam maliyet</b>.</div>
+      </div>
+    </section>
+
+    <section class="grid2">
+      <section class="card">
+        <div class="hd"><h2>Birim Fiyatlar</h2><span class="pill">kg ve adet</span></div>
+        <div class="bd tight">
+          <table id="tblPrices"></table>
+          <div class="mini">Birim fiyat değiştirince tüm hesaplar anında güncellenir.</div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="hd"><h2>Paketleme Reçetesi (adet)</h2><span class="pill">Boy bazlı</span></div>
+        <div class="bd tight">
+          <table id="tblPack"></table>
+          <div class="mini">Porsiyon/500g ve 1kg için paketleme adetlerini düzenleyebilirsin.</div>
+        </div>
+      </section>
+    </section>
+
+    <section class="card">
+      <div class="hd"><h2>Ürün Reçeteleri (gram)</h2><span class="pill">Et + Salata</span></div>
+      <div class="bd tight">
+        <div class="mini" style="margin-bottom:8px;">Her satır bir ürün+boy kombinasyonu. Gram değiştirince maliyet otomatik güncellenir.</div>
+        <div style="max-height:360px; overflow:auto; border:1px solid var(--line); border-radius:12px;">
+          <table id="tblRec"></table>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="hd"><h2>Tüm Kombinasyonlar (Özet)</h2><div class="row" style="gap:8px; align-items:center;"><button id="refreshAll">Özeti Yenile</button></div></div>
+      <div class="bd">
+        <div style="max-height:360px; overflow:auto; border:1px solid var(--line); border-radius:12px;">
+          <table id="tblAll"></table>
+        </div>
+        <div class="mini">Bu tabloda adet=1, ayran=0, ekmek=1 varsayımıyla listeler.</div>
+      </div>
+    </section>
+  </section>
+</main>
+
+<script>
+const DEFAULT = {
+  params:{c:10,v:10,cv:18,katsayi:0.791,targetSmall:135,targetKg:220},
+  prices:{
+    "Bonfile":{unit:"kg",price:138},
+    "Pirzola":{unit:"kg",price:100},
+    "Kanat":{unit:"kg",price:150},
+    "Köfte":{unit:"kg",price:300},
+    "Marul":{unit:"kg",price:85},
+    "Domates":{unit:"kg",price:59},
+    "Soğan":{unit:"kg",price:15},
+    "Lavaş":{unit:"adet",price:2},
+    "Pilav paketi (120 g)":{unit:"adet",price:2},
+    "Sızdırmaz kap":{unit:"adet",price:1.35},
+    "Köpük tabak":{unit:"adet",price:1.25},
+    "6'lı servis set":{unit:"adet",price:1.5},
+    "Poşet":{unit:"adet",price:0.5},
+    "Ayran":{unit:"adet",price:20},
+    "Ekmek":{unit:"adet",price:6}
+  },
+  packBySize:{
+    "Porsiyon":{"Lavaş":0.5,"Pilav paketi (120 g)":1,"Sızdırmaz kap":1,"Köpük tabak":2,"6'lı servis set":1,"Poşet":1},
+    "500 g":{"Lavaş":0.5,"Pilav paketi (120 g)":1,"Sızdırmaz kap":1,"Köpük tabak":2,"6'lı servis set":1,"Poşet":1},
+    "1 kg":{"Lavaş":1,"Pilav paketi (120 g)":2,"Sızdırmaz kap":2,"Köpük tabak":2,"6'lı servis set":1,"Poşet":1}
+  },
+  recipes:[
+    {urun:"Karışık",boy:"Porsiyon",Bonfile:70,Pirzola:130,Kanat:80,"Köfte":70,Marul:30,Domates:30,"Soğan":30},
+    {urun:"Bonfile",boy:"Porsiyon",Bonfile:300,Pirzola:0,Kanat:0,"Köfte":0,Marul:30,Domates:30,"Soğan":30},
+    {urun:"Pirzola",boy:"Porsiyon",Bonfile:0,Pirzola:300,Kanat:0,"Köfte":0,Marul:30,Domates:30,"Soğan":30},
+    {urun:"Kanat",boy:"Porsiyon",Bonfile:0,Pirzola:0,Kanat:300,"Köfte":0,Marul:30,Domates:30,"Soğan":30},
+    {urun:"Köfte",boy:"Porsiyon",Bonfile:0,Pirzola:0,Kanat:0,"Köfte":210,Marul:30,Domates:30,"Soğan":30},
+
+    {urun:"Karışık",boy:"500 g",Bonfile:100,Pirzola:186,Kanat:114,"Köfte":100,Marul:30,Domates:30,"Soğan":30},
+    {urun:"Bonfile",boy:"500 g",Bonfile:500,Pirzola:0,Kanat:0,"Köfte":0,Marul:30,Domates:30,"Soğan":30},
+    {urun:"Pirzola",boy:"500 g",Bonfile:0,Pirzola:500,Kanat:0,"Köfte":0,Marul:30,Domates:30,"Soğan":30},
+    {urun:"Kanat",boy:"500 g",Bonfile:0,Pirzola:0,Kanat:500,"Köfte":0,Marul:30,Domates:30,"Soğan":30},
+    {urun:"Köfte",boy:"500 g",Bonfile:0,Pirzola:0,Kanat:0,"Köfte":500,Marul:30,Domates:30,"Soğan":30},
+
+    {urun:"Karışık",boy:"1 kg",Bonfile:200,Pirzola:371,Kanat:229,"Köfte":200,Marul:60,Domates:60,"Soğan":60},
+    {urun:"Bonfile",boy:"1 kg",Bonfile:1000,Pirzola:0,Kanat:0,"Köfte":0,Marul:60,Domates:60,"Soğan":60},
+    {urun:"Pirzola",boy:"1 kg",Bonfile:0,Pirzola:1000,Kanat:0,"Köfte":0,Marul:60,Domates:60,"Soğan":60},
+    {urun:"Kanat",boy:"1 kg",Bonfile:0,Pirzola:0,Kanat:1000,"Köfte":0,Marul:60,Domates:60,"Soğan":60},
+    {urun:"Köfte",boy:"1 kg",Bonfile:0,Pirzola:0,Kanat:0,"Köfte":1000,Marul:60,Domates:60,"Soğan":60}
+  ]
+};
+const LS_KEY="maliyet_app_v2_dynamic_pack";
+let STATE=structuredClone(DEFAULT);
+
+const fmt=n=>isFinite(n)?new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2}).format(n)+" TL":"-";
+const fmt0=n=>isFinite(n)?new Intl.NumberFormat("tr-TR",{maximumFractionDigits:0}).format(n)+" TL":"-";
+const num=v=>{const x=parseFloat(String(v).replace(",", "."));return isFinite(x)?x:0};
+
+function setPill(text,kind="ok"){
+  const el=document.getElementById("statePill");
+  el.textContent=text;
+  el.style.borderColor=kind==="dng"?"rgba(251,113,133,.5)":kind==="warn"?"rgba(251,191,36,.5)":"rgba(52,211,153,.45)";
+  el.style.color=kind==="dng"?"var(--danger)":kind==="warn"?"var(--warn)":"var(--muted)";
+}
+
+function computeKatsayi(cPct,vPct,cvPct){
+  const c=cPct/100,v=vPct/100,cv=cvPct/100;
+  const k=(1-v)*(1-c*(1+cv)); // yaklaşık
+  return Math.max(0,Math.min(1,k));
+}
+
+function getRecipe(urun,boy){return STATE.recipes.find(r=>r.urun===urun&&r.boy===boy)}
+function costMeat(r){
+  const p=STATE.prices;
+  return (r.Bonfile/1000)*p["Bonfile"].price+(r.Pirzola/1000)*p["Pirzola"].price+(r.Kanat/1000)*p["Kanat"].price+(r["Köfte"]/1000)*p["Köfte"].price;
+}
+function costSalad(r){
+  const p=STATE.prices;
+  return (r.Marul/1000)*p["Marul"].price+(r.Domates/1000)*p["Domates"].price+(r["Soğan"]/1000)*p["Soğan"].price;
+}
+function costPack(boy,adet=1,ayran=0,ekmek=0){
+  const p=STATE.prices, pack=STATE.packBySize[boy];
+  let s=0;
+  for(const k of Object.keys(pack)) s+=(pack[k]||0)*(p[k]?.price??0);
+  s+=(ayran||0)*p["Ayran"].price;
+  s+=(ekmek||0)*p["Ekmek"].price;
+  return s*adet;
+}
+function totalCost(urun,boy,adet=1,ayran=0,ekmek=0){
+  const r=getRecipe(urun,boy); if(!r) return {et:0,salata:0,pack:0,total:0};
+  const et=costMeat(r)*adet, salata=costSalad(r)*adet, pack=costPack(boy,adet,ayran,ekmek);
+  return {et,salata,pack,total:et+salata+pack};
+}
+function targetForSize(boy){return boy==="1 kg"?num(document.getElementById("targetKg").value):num(document.getElementById("targetSmall").value)}
+function recommendedLabelPrice(maliyet,hedef,k){return k>0?(maliyet+hedef)/k:NaN}
+
+function renderSelectors(){
+  const urunSel=document.getElementById("urunSel"), boySel=document.getElementById("boySel");
+  const urunler=[...new Set(STATE.recipes.map(r=>r.urun))];
+  urunSel.innerHTML=urunler.map(u=>`<option value="${u}">${u}</option>`).join("");
+  const fillBoy=()=>{const boys=STATE.recipes.filter(r=>r.urun===urunSel.value).map(r=>r.boy); boySel.innerHTML=boys.map(b=>`<option value="${b}">${b}</option>`).join("")}
+  urunSel.addEventListener("change",()=>{fillBoy();refreshQuick()});
+  boySel.addEventListener("change",refreshQuick);
+  fillBoy();
+}
+function renderPrices(){
+  const tbl=document.getElementById("tblPrices");
+  const rows=Object.entries(STATE.prices);
+  tbl.innerHTML=`<thead><tr><th>Kalem</th><th>Birim</th><th class="right">Birim Fiyat (TL)</th></tr></thead>
+  <tbody>${rows.map(([k,v])=>`<tr><td>${k}</td><td class="muted">${v.unit}</td><td class="right"><input data-price="${k}" type="number" step="0.01" value="${v.price}"></td></tr>`).join("")}</tbody>`;
+  tbl.querySelectorAll("input[data-price]").forEach(inp=>{
+    inp.addEventListener("input",e=>{const key=e.target.getAttribute("data-price"); STATE.prices[key].price=num(e.target.value); refreshQuick();});
+  });
+}
+function renderPack(){
+  const tbl=document.getElementById("tblPack");
+  const items=Object.keys(STATE.packBySize["Porsiyon"]);
+  const sizes=Object.keys(STATE.packBySize);
+  tbl.innerHTML=`<thead><tr><th>Kalem</th>${sizes.map(s=>`<th class="right">${s}</th>`).join("")}</tr></thead>
+  <tbody>${items.map(it=>`<tr><td>${it}</td>${sizes.map(s=>`<td class="right"><input data-pack="${it}" data-size="${s}" type="number" step="0.1" value="${STATE.packBySize[s][it]??0}"></td>`).join("")}</tr>`).join("")}</tbody>`;
+  tbl.querySelectorAll("input[data-pack]").forEach(inp=>{
+    inp.addEventListener("input",e=>{const it=e.target.getAttribute("data-pack"); const s=e.target.getAttribute("data-size"); STATE.packBySize[s][it]=num(e.target.value); refreshQuick();});
+  });
+}
+function renderRecipes(){
+  const tbl=document.getElementById("tblRec");
+  const cols=["Bonfile","Pirzola","Kanat","Köfte","Marul","Domates","Soğan"];
+  tbl.innerHTML=`<thead><tr><th>Ürün</th><th>Boy</th>${cols.map(c=>`<th class="right">${c} (g)</th>`).join("")}</tr></thead>
+  <tbody>${STATE.recipes.map((r,idx)=>`<tr><td>${r.urun}</td><td class="muted">${r.boy}</td>${cols.map(c=>`<td class="right"><input data-rec="${idx}" data-col="${c}" type="number" step="1" value="${r[c]}"></td>`).join("")}</tr>`).join("")}</tbody>`;
+  tbl.querySelectorAll("input[data-rec]").forEach(inp=>{
+    inp.addEventListener("input",e=>{const idx=parseInt(e.target.getAttribute("data-rec"),10); const col=e.target.getAttribute("data-col"); STATE.recipes[idx][col]=Math.max(0,Math.round(num(e.target.value))); refreshQuick();});
+  });
+}
+function renderAll(){
+  const tbl=document.getElementById("tblAll");
+  const k=num(document.getElementById("katsayi").value);
+  const rows=STATE.recipes.map(r=>{
+    const costs=totalCost(r.urun,r.boy,1,0,1);
+    const hedef=targetForSize(r.boy);
+    const etiket=recommendedLabelPrice(costs.total,hedef,k);
+    const netKar=(etiket*k)-costs.total;
+    return {...r,costs,hedef,etiket,netKar};
+  });
+  tbl.innerHTML=`<thead><tr><th>Ürün</th><th>Boy</th><th class="right">Et</th><th class="right">Salata</th><th class="right">Paket</th><th class="right">Toplam</th><th class="right">Hedef</th><th class="right">Etiket</th><th class="right">Net Kâr</th></tr></thead>
+  <tbody>${rows.map(x=>`<tr><td>${x.urun}</td><td class="muted">${x.boy}</td><td class="right">${fmt0(x.costs.et)}</td><td class="right">${fmt0(x.costs.salata)}</td><td class="right">${fmt0(x.costs.pack)}</td><td class="right"><b>${fmt0(x.costs.total)}</b></td><td class="right">${fmt0(x.hedef)}</td><td class="right"><b class="ok">${fmt0(x.etiket)}</b></td><td class="right">${fmt0(x.netKar)}</td></tr>`).join("")}</tbody>`;
+}
+
+function refreshQuick(){
+  const urun=document.getElementById("urunSel").value;
+  const boy=document.getElementById("boySel").value;
+  const adet=Math.max(1,Math.round(num(document.getElementById("adetSel").value)));
+  const ayran=Math.max(0,Math.round(num(document.getElementById("ayranSel").value)));
+  const ekmek=Math.max(0,Math.round(num(document.getElementById("ekmekSel").value)));
+  document.getElementById("adetSel").value=adet;
+  const k=num(document.getElementById("katsayi").value);
+  const hedef=targetForSize(boy)*adet;
+  const costs=totalCost(urun,boy,adet,ayran,ekmek);
+  const etiket=recommendedLabelPrice(costs.total,hedef,k);
+  const netGelir=etiket*k;
+  const netKar=netGelir-costs.total;
+
+  document.getElementById("kEt").textContent=fmt(costs.et);
+  document.getElementById("kSalata").textContent=fmt(costs.salata);
+  document.getElementById("kPack").textContent=fmt(costs.pack);
+  document.getElementById("kTop").textContent=fmt(costs.total);
+
+  document.getElementById("kHedef").textContent=fmt(hedef);
+  document.getElementById("kEtiket").textContent=fmt(etiket);
+  document.getElementById("kNetGelir").textContent=fmt(netGelir);
+
+  const nk=document.getElementById("kNetKar");
+  nk.textContent=fmt(netKar);
+  nk.className="v "+(netKar>=hedef*0.98?"acc":(netKar>=0?"warn":"dng"));
+}
+
+function syncParamsFromUI(){
+  STATE.params.c=num(document.getElementById("c").value);
+  STATE.params.v=num(document.getElementById("v").value);
+  STATE.params.cv=num(document.getElementById("cv").value);
+  STATE.params.katsayi=num(document.getElementById("katsayi").value);
+  STATE.params.targetSmall=num(document.getElementById("targetSmall").value);
+  STATE.params.targetKg=num(document.getElementById("targetKg").value);
+}
+function pushParamsToUI(){
+  document.getElementById("c").value=STATE.params.c;
+  document.getElementById("v").value=STATE.params.v;
+  document.getElementById("cv").value=STATE.params.cv;
+  document.getElementById("katsayi").value=STATE.params.katsayi;
+  document.getElementById("targetSmall").value=STATE.params.targetSmall;
+  document.getElementById("targetKg").value=STATE.params.targetKg;
+}
+function save(){
+  syncParamsFromUI();
+  localStorage.setItem(LS_KEY, JSON.stringify(STATE));
+  setPill("Durum: kaydedildi ✅","ok");
+}
+function load(){
+  const raw=localStorage.getItem(LS_KEY);
+  if(!raw){setPill("Durum: kayıt yok","warn");return;}
+  try{
+    STATE=JSON.parse(raw);
+    STATE.params=Object.assign({},DEFAULT.params,STATE.params||{});
+    STATE.prices=Object.assign({},DEFAULT.prices,STATE.prices||{});
+    STATE.packBySize=Object.assign({},DEFAULT.packBySize,STATE.packBySize||{});
+    STATE.recipes=Array.isArray(STATE.recipes)?STATE.recipes:structuredClone(DEFAULT.recipes);
+    pushParamsToUI();
+    renderAllUI();
+    setPill("Durum: yüklendi ✅","ok");
+  }catch(e){console.error(e);setPill("Durum: yükleme hatası","dng");}
+}
+function resetAll(){
+  STATE=structuredClone(DEFAULT);
+  pushParamsToUI();
+  renderAllUI();
+  setPill("Durum: sıfırlandı","warn");
+}
+
+function renderAllUI(){
+  renderSelectors();renderPrices();renderPack();renderRecipes();refreshQuick();renderAll();
+}
+
+document.getElementById("calcK").addEventListener("click",()=>{
+  const c=num(document.getElementById("c").value);
+  const v=num(document.getElementById("v").value);
+  const cv=num(document.getElementById("cv").value);
+  document.getElementById("katsayi").value=computeKatsayi(c,v,cv).toFixed(3);
+  setPill("Katsayı hesaplandı (yaklaşık)","warn");
+  refreshQuick();renderAll();
+});
+["c","v","cv","katsayi","targetSmall","targetKg"].forEach(id=>document.getElementById(id).addEventListener("input",()=>{refreshQuick()}));
+["adetSel","ayranSel","ekmekSel"].forEach(id=>document.getElementById(id).addEventListener("input",refreshQuick));
+document.getElementById("saveBtn").addEventListener("click",save);
+document.getElementById("loadBtn").addEventListener("click",load);
+document.getElementById("resetBtn").addEventListener("click",()=>{ if(confirm("Ekranı varsayılana döndüreyim mi?")) resetAll(); });
+document.getElementById("refreshAll").addEventListener("click",()=>{renderAll(); setPill("Özet yenilendi","ok");});
+
+pushParamsToUI();
+renderAllUI();
+setPill("Durum: hazır ✅","ok");
+</script>
+</body>
+</html>
