@@ -20,7 +20,11 @@ main{padding:18px;display:grid;grid-template-columns:380px 1fr;gap:14px;align-it
 .col{flex:1 1 140px}
 label{display:block;font-size:11px;color:var(--muted);margin-bottom:6px}
 input,select,button{width:100%;box-sizing:border-box;background:rgba(0,0,0,.18);border:1px solid var(--line);border-radius:12px;color:var(--text);padding:10px 10px;outline:none}
-input:focus,select:focus{border-color:rgba(52,211,153,.65);box-shadow:0 0 0 3px rgba(52,211,153,.18)}
+select{background:#0f172a;color:#fff;border:1px solid #34d399;min-height:42px}
+select option{background:#111c31;color:#fff}
+select option:checked,select option:hover{background:#34d399;color:#04130d}
+input:focus,select:focus{border-color:rgba(52,211,153,.85);box-shadow:0 0 0 3px rgba(52,211,153,.18)}
+@media (max-width:980px){select{font-size:16px;min-height:46px;padding:11px 12px}}
 button{cursor:pointer;font-weight:700;background:rgba(52,211,153,.15);border-color:rgba(52,211,153,.35)}
 button:hover{background:rgba(52,211,153,.22)}
 .btn2{background:rgba(251,191,36,.14);border-color:rgba(251,191,36,.35)}
@@ -49,14 +53,22 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .ok{color:var(--accent)}
 .warn{color:var(--warn)}
 .dng{color:var(--danger)}
+
+.tabbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.tabbtn{width:auto;padding:8px 12px;border-radius:999px;font-size:12px;background:rgba(0,0,0,.18)}
+.tabbtn.active{background:rgba(52,211,153,.2);border-color:rgba(52,211,153,.5)}
+.page{display:none}.page.active{display:block}
+.tableWrap{max-height:360px;overflow:auto;border:1px solid var(--line);border-radius:12px}
 </style>
 </head>
 <body>
 <header>
   <h1>Maliyet Uygulaması — Dinamik Salata + Dinamik Paketleme</h1>
   <div class="sub">Sabit 20/29 gibi değerler yok. Her şey reçete + birim fiyatlarla hesaplanır. (Offline çalışır, Kaydet/Yükle ile hafızaya alır)</div>
+  <div class="tabbar" id="topTabs"></div>
 </header>
 
+<section id="page-maliyet" class="page active">
 <main>
   <section class="card">
     <div class="hd"><h2>Ayarlar</h2><span class="pill" id="statePill">Durum: hazır</span></div>
@@ -160,6 +172,14 @@ tr:hover td{background:rgba(255,255,255,.02)}
     </section>
   </section>
 </main>
+</section>
+
+<section id="page-vergiozeti" class="page"></section>
+<section id="page-gunluksatis" class="page"></section>
+<section id="page-giderfaturalar" class="page"></section>
+<section id="page-vergimerkezi" class="page"></section>
+<section id="page-borctakibi" class="page"></section>
+<section id="page-vergiayarlari" class="page"></section>
 
 <script>
 const DEFAULT = {
@@ -394,6 +414,58 @@ document.getElementById("refreshAll").addEventListener("click",()=>{renderAll();
 pushParamsToUI();
 renderAllUI();
 setPill("Durum: hazır ✅","ok");
+
+const TAX_KEY="otmaher_vergi_v1";
+const TAX_DEFAULT={settings:{salesVat:10,tempTaxRate:25},dailySales:[],expenses:[],debts:[]};
+let TAX_STATE=structuredClone(TAX_DEFAULT);
+window.TAX_EDIT=window.TAX_EDIT||{ds:null,ex:null,db:null};
+const TAX_TABS=[['Maliyet Uygulaması','maliyet'],['Vergi Özeti','vergiozeti'],['Günlük Satış','gunluksatis'],['Gider Faturaları','giderfaturalar'],['Vergi Merkezi','vergimerkezi'],['Borç Takibi','borctakibi'],['Vergi Ayarları','vergiayarlari']];
+function tv(v){const x=parseFloat(v);return isFinite(x)?x:0}
+function initTabs(){const root=document.getElementById('topTabs');root.innerHTML=TAX_TABS.map(t=>`<button class="tabbtn" data-tab="${t[1]}">${t[0]}</button>`).join('');root.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>openTab(b.dataset.tab)));openTab('maliyet');}
+function openTab(name){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));const pg=document.getElementById('page-'+name);if(pg)pg.classList.add('active');document.querySelectorAll('.tabbtn').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));}
+function taxCompute(){const salesIncl=TAX_STATE.dailySales.reduce((a,r)=>a+r.total,0);const salesEx=salesIncl/(1+tv(TAX_STATE.settings.salesVat)/100);const outVat=salesIncl-salesEx;let expEx=0,inVat=0,tempExpEx=0;TAX_STATE.expenses.forEach(e=>{expEx+=e.kdvHaric;inVat+=e.indKdv;if(e.tempIncluded)tempExpEx+=e.kdvHaric});const payVat=outVat-inVat;const income=salesEx-tempExpEx;const tempRate=tv(TAX_STATE.settings.tempTaxRate)/100;const tempTax=Math.max(0,income)*tempRate;const realProfit=income-tempTax;const openDebt=TAX_STATE.debts.filter(d=>d.status!=='Ödendi').reduce((a,d)=>a+d.amount,0);return {salesIncl,salesEx,expEx,outVat,inVat,payVat,income,tempTax,realProfit,openDebt,tempRate};}
+function saveTax(){localStorage.setItem(TAX_KEY,JSON.stringify(TAX_STATE));}
+function loadTax(){try{const r=localStorage.getItem(TAX_KEY);if(r){TAX_STATE=Object.assign({},TAX_DEFAULT,JSON.parse(r));TAX_STATE.settings=Object.assign({},TAX_DEFAULT.settings,TAX_STATE.settings||{});TAX_STATE.dailySales=Array.isArray(TAX_STATE.dailySales)?TAX_STATE.dailySales:[];TAX_STATE.expenses=Array.isArray(TAX_STATE.expenses)?TAX_STATE.expenses:[];TAX_STATE.debts=Array.isArray(TAX_STATE.debts)?TAX_STATE.debts:[]}}catch(e){alert('Vergi kaydı okunamadı')} }
+function rTax(){
+  const c=taxCompute();
+  const edit=window.TAX_EDIT||{ds:null,ex:null,db:null};
+
+  document.getElementById('page-vergiozeti').innerHTML=`<div class="kpi"><div class="k"><div class="t">Toplam satış KDV dahil</div><div class="v">${fmt(c.salesIncl)}</div></div><div class="k"><div class="t">KDV hariç satış</div><div class="v">${fmt(c.salesEx)}</div></div><div class="k"><div class="t">KDV hariç gider</div><div class="v">${fmt(c.expEx)}</div></div><div class="k"><div class="t">Tahmini gerçek kâr</div><div class="v ${c.realProfit>=0?'acc':'dng'}">${fmt(c.realProfit)}</div></div><div class="k"><div class="t">Tahmini ödenecek KDV</div><div class="v">${fmt(c.payVat)}</div></div><div class="k"><div class="t">Tahmini geçici vergi</div><div class="v">${fmt(c.tempTax)}</div></div><div class="k"><div class="t">Açık borç toplamı</div><div class="v warn">${fmt(c.openDebt)}</div></div></div>`;
+
+  document.getElementById('page-vergiayarlari').innerHTML=`<section class="card"><div class="hd"><h2>Vergi Ayarları</h2></div><div class="bd"><div class="row"><div class="col"><label>Satış KDV %</label><input id="taxSalesVat" type="number" value="${TAX_STATE.settings.salesVat}"></div><div class="col"><label>Geçici vergi oranı %</label><input id="taxTemp" type="number" value="${TAX_STATE.settings.tempTaxRate}"></div></div><div class="row" style="margin-top:10px"><div class="col"><button id="taxSetSave">Kaydet</button></div></div></div></section>`;
+  document.getElementById('taxSetSave')?.addEventListener('click',()=>{TAX_STATE.settings.salesVat=tv(document.getElementById('taxSalesVat').value);TAX_STATE.settings.tempTaxRate=tv(document.getElementById('taxTemp').value);saveTax();rTax();});
+
+  const dsBtn=edit.ds===null?'Ekle':'Güncelle';
+  document.getElementById('page-gunluksatis').innerHTML=`<section class="card"><div class="hd"><h2>Günlük Satış</h2></div><div class="bd"><div class="row"><div class="col"><label>Tarih</label><input id="dsDate" type="date"></div><div class="col"><label>Trendyol</label><input id="ds1" type="number"></div><div class="col"><label>Getir</label><input id="ds2" type="number"></div><div class="col"><label>Migros</label><input id="ds3" type="number"></div><div class="col"><label>Yemeksepeti</label><input id="ds4" type="number"></div><div class="col"><label>Elden / dükkân</label><input id="ds5" type="number"></div><div class="col" style="display:flex;align-items:end;gap:8px"><button id="dsAdd">${dsBtn}</button><button class='btn2' id='dsCancel'>İptal</button></div></div><div class="tableWrap"><table><thead><tr><th>Tarih</th><th>Trendyol</th><th>Getir</th><th>Migros</th><th>Yemeksepeti</th><th>Elden</th><th>Günlük toplam</th><th></th></tr></thead><tbody>${TAX_STATE.dailySales.map((r,i)=>`<tr><td>${r.date}</td><td>${fmt(r.t1)}</td><td>${fmt(r.t2)}</td><td>${fmt(r.t3)}</td><td>${fmt(r.t4)}</td><td>${fmt(r.t5)}</td><td><b>${fmt(r.total)}</b></td><td><button class='btn2' data-ds-edit='${i}'>Düzenle</button> <button class='btndanger' data-ds='${i}'>Sil</button></td></tr>`).join('')}</tbody></table></div></div></section>`;
+  if(edit.ds!==null&&TAX_STATE.dailySales[edit.ds]){const r=TAX_STATE.dailySales[edit.ds];dsDate.value=r.date;ds1.value=r.t1;ds2.value=r.t2;ds3.value=r.t3;ds4.value=r.t4;ds5.value=r.t5;}
+  document.getElementById('dsAdd')?.addEventListener('click',()=>{const d=dsDate.value;if(!d){alert('Tarih zorunlu');return}const t1=tv(ds1.value),t2=tv(ds2.value),t3=tv(ds3.value),t4=tv(ds4.value),t5=tv(ds5.value);const row={date:d,t1,t2,t3,t4,t5,total:t1+t2+t3+t4+t5};if(edit.ds===null){TAX_STATE.dailySales.push(row);}else{TAX_STATE.dailySales[edit.ds]=row;window.TAX_EDIT.ds=null;}dsDate.value='';ds1.value='';ds2.value='';ds3.value='';ds4.value='';ds5.value='';saveTax();rTax();});
+  document.getElementById('dsCancel')?.addEventListener('click',()=>{window.TAX_EDIT.ds=null;dsDate.value='';ds1.value='';ds2.value='';ds3.value='';ds4.value='';ds5.value='';rTax();});
+  document.querySelectorAll('[data-ds]').forEach(b=>b.onclick=()=>{if(confirm('Silinsin mi?')){TAX_STATE.dailySales.splice(+b.dataset.ds,1);if(window.TAX_EDIT?.ds===+b.dataset.ds)window.TAX_EDIT.ds=null;saveTax();rTax();}});
+  document.querySelectorAll('[data-ds-edit]').forEach(b=>b.onclick=()=>{window.TAX_EDIT={...(window.TAX_EDIT||{}),ds:+b.dataset.ds};rTax();});
+
+  const exBtn=edit.ex===null?'Ekle':'Güncelle';
+  document.getElementById('page-giderfaturalar').innerHTML=`<section class='card'><div class='hd'><h2>Gider Faturaları</h2></div><div class='bd'><div class='row'><div class='col'><label>Tarih</label><input id='exDate' type='date'></div><div class='col'><label>Firma / açıklama</label><input id='exFirm'></div><div class='col'><label>Gider tipi</label><select id='exType'>${['Et','Paketleme','Kira','Elektrik','Muhasebe','Platform','Genel gider'].map(x=>`<option>${x}</option>`)}</select></div><div class='col'><label>KDV dahil tutar</label><input id='exIncl' type='number'></div><div class='col'><label>KDV oranı %</label><input id='exVat' type='number' value='20'></div><div class='col'><label>Geçici vergiye dahil mi?</label><select id='exTemp'><option>Evet</option><option>Hayır</option></select></div><div class='col' style='display:flex;align-items:end;gap:8px'><button id='exAdd'>${exBtn}</button><button class='btn2' id='exCancel'>İptal</button></div></div><div class='tableWrap'><table><thead><tr><th>Tarih</th><th>Firma</th><th>Tip</th><th>KDV Dahil</th><th>KDV %</th><th>KDV Hariç</th><th>İndirilecek KDV</th><th>Geçici Vergi</th><th></th></tr></thead><tbody>${TAX_STATE.expenses.map((e,i)=>`<tr><td>${e.date}</td><td>${e.firm}</td><td>${e.type}</td><td>${fmt(e.kdvDahil)}</td><td>%${e.kdvOran}</td><td>${fmt(e.kdvHaric)}</td><td>${fmt(e.indKdv)}</td><td>${e.tempIncluded?'Evet':'Hayır'}</td><td><button class='btn2' data-ex-edit='${i}'>Düzenle</button> <button class='btndanger' data-ex='${i}'>Sil</button></td></tr>`).join('')}</tbody></table></div></div></section>`;
+  if(edit.ex!==null&&TAX_STATE.expenses[edit.ex]){const e=TAX_STATE.expenses[edit.ex];exDate.value=e.date;exFirm.value=e.firm;exType.value=e.type;exIncl.value=e.kdvDahil;exVat.value=e.kdvOran;exTemp.value=e.tempIncluded?'Evet':'Hayır';}
+  document.getElementById('exAdd')?.addEventListener('click',()=>{const date=exDate.value,firm=exFirm.value.trim();if(!date||!firm){alert('Tarih ve firma zorunlu');return}const kdvDahil=tv(exIncl.value),kdvOran=tv(exVat.value),kdvHaric=kdvDahil/(1+kdvOran/100),indKdv=kdvDahil-kdvHaric;const row={date,firm,type:exType.value,kdvDahil,kdvOran,kdvHaric,indKdv,tempIncluded:exTemp.value==='Evet'};if(edit.ex===null){TAX_STATE.expenses.push(row);}else{TAX_STATE.expenses[edit.ex]=row;window.TAX_EDIT.ex=null;}exDate.value='';exFirm.value='';exType.value='Et';exIncl.value='';exVat.value='20';exTemp.value='Evet';saveTax();rTax();});
+  document.getElementById('exCancel')?.addEventListener('click',()=>{window.TAX_EDIT.ex=null;exDate.value='';exFirm.value='';exType.value='Et';exIncl.value='';exVat.value='20';exTemp.value='Evet';rTax();});
+  document.querySelectorAll('[data-ex]').forEach(b=>b.onclick=()=>{if(confirm('Silinsin mi?')){TAX_STATE.expenses.splice(+b.dataset.ex,1);if(window.TAX_EDIT?.ex===+b.dataset.ex)window.TAX_EDIT.ex=null;saveTax();rTax();}});
+  document.querySelectorAll('[data-ex-edit]').forEach(b=>b.onclick=()=>{window.TAX_EDIT={...(window.TAX_EDIT||{}),ex:+b.dataset.ex};rTax();});
+
+  document.getElementById('page-vergimerkezi').innerHTML=`<div class='kpi'><div class='k'><div class='t'>Çıkan KDV</div><div class='v'>${fmt(c.outVat)}</div></div><div class='k'><div class='t'>İndirilecek KDV</div><div class='v'>${fmt(c.inVat)}</div></div><div class='k'><div class='t'>Tahmini ödenecek KDV</div><div class='v ${c.payVat>=0?'warn':'acc'}'>${fmt(c.payVat)}</div></div><div class='k'><div class='t'>KDV hariç satış</div><div class='v'>${fmt(c.salesEx)}</div></div><div class='k'><div class='t'>KDV hariç gider</div><div class='v'>${fmt(c.expEx)}</div></div><div class='k'><div class='t'>Vergiye esas kazanç</div><div class='v'>${fmt(c.income)}</div></div><div class='k'><div class='t'>Geçici vergi oranı</div><div class='v'>%${(c.tempRate*100).toFixed(2)}</div></div><div class='k'><div class='t'>Tahmini geçici vergi</div><div class='v'>${fmt(c.tempTax)}</div></div></div>`;
+
+  const dbBtn=edit.db===null?'Ekle':'Güncelle';
+  document.getElementById('page-borctakibi').innerHTML=`<section class='card'><div class='hd'><h2>Borç Takibi</h2></div><div class='bd'><div class='row'><div class='col'><label>Vade</label><input id='dbDue' type='date'></div><div class='col'><label>Açıklama</label><input id='dbDesc'></div><div class='col'><label>Tutar</label><input id='dbAmount' type='number'></div><div class='col'><label>Durum</label><select id='dbStatus'><option>Bekliyor</option><option>Ödendi</option><option>Gecikti</option></select></div><div class='col' style='display:flex;align-items:end;gap:8px'><button id='dbAdd'>${dbBtn}</button><button class='btn2' id='dbCancel'>İptal</button></div></div><div class='tableWrap'><table><thead><tr><th>Vade</th><th>Açıklama</th><th>Tutar</th><th>Durum</th><th></th></tr></thead><tbody>${TAX_STATE.debts.map((d,i)=>`<tr><td>${d.due}</td><td>${d.desc}</td><td>${fmt(d.amount)}</td><td>${d.status}</td><td><button class='btn2' data-db-edit='${i}'>Düzenle</button> <button class='btndanger' data-db='${i}'>Sil</button></td></tr>`).join('')}</tbody></table></div></div></section>`;
+  if(edit.db!==null&&TAX_STATE.debts[edit.db]){const d=TAX_STATE.debts[edit.db];dbDue.value=d.due;dbDesc.value=d.desc;dbAmount.value=d.amount;dbStatus.value=d.status;}
+  document.getElementById('dbAdd')?.addEventListener('click',()=>{if(!dbDue.value||!dbDesc.value.trim()){alert('Vade ve açıklama zorunlu');return}const row={due:dbDue.value,desc:dbDesc.value.trim(),amount:tv(dbAmount.value),status:dbStatus.value};if(edit.db===null){TAX_STATE.debts.push(row);}else{TAX_STATE.debts[edit.db]=row;window.TAX_EDIT.db=null;}dbDue.value='';dbDesc.value='';dbAmount.value='';dbStatus.value='Bekliyor';saveTax();rTax();});
+  document.getElementById('dbCancel')?.addEventListener('click',()=>{window.TAX_EDIT.db=null;dbDue.value='';dbDesc.value='';dbAmount.value='';dbStatus.value='Bekliyor';rTax();});
+  document.querySelectorAll('[data-db]').forEach(b=>b.onclick=()=>{if(confirm('Silinsin mi?')){TAX_STATE.debts.splice(+b.dataset.db,1);if(window.TAX_EDIT?.db===+b.dataset.db)window.TAX_EDIT.db=null;saveTax();rTax();}});
+  document.querySelectorAll('[data-db-edit]').forEach(b=>b.onclick=()=>{window.TAX_EDIT={...(window.TAX_EDIT||{}),db:+b.dataset.db};rTax();});
+}
+
+loadTax();
+initTabs();
+rTax();
+
 </script>
 </body>
 </html>
