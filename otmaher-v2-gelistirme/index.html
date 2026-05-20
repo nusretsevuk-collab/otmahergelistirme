@@ -429,6 +429,9 @@ function saveTax(){localStorage.setItem(TAX_KEY,JSON.stringify(TAX_STATE));}
 function loadTax(){try{const r=localStorage.getItem(TAX_KEY);if(r){TAX_STATE=Object.assign({},TAX_DEFAULT,JSON.parse(r));TAX_STATE.settings=Object.assign({},TAX_DEFAULT.settings,TAX_STATE.settings||{});TAX_STATE.dailySales=Array.isArray(TAX_STATE.dailySales)?TAX_STATE.dailySales:[];TAX_STATE.expenses=Array.isArray(TAX_STATE.expenses)?TAX_STATE.expenses:[];TAX_STATE.debts=Array.isArray(TAX_STATE.debts)?TAX_STATE.debts:[]}}catch(e){alert('Vergi kaydı okunamadı')} }
 const TAX_EDIT={dailySales:null,expenses:null,debts:null};
 function normalizeHeader(v){return String(v||'').toLowerCase().replace(/\s+/g,' ').trim();}
+function cleanAdisyoDateText(value){
+  return String(value??'').replace(/^\s*-\s*/,'').trim();
+}
 function parseExcelDate(value){
   if(value===null||value===undefined||value==='') return null;
   if(typeof value==='number'){
@@ -440,7 +443,8 @@ function parseExcelDate(value){
     if(isNaN(value.getTime())) return null;
     return new Date(Date.UTC(value.getFullYear(),value.getMonth(),value.getDate())).toISOString().slice(0,10);
   }
-  const txt=String(value).trim();
+  const txt=cleanAdisyoDateText(value);
+  if(!txt || /^toplam\s*:?\s*$/i.test(txt)) return null;
   const m=txt.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})$/);
   if(m){
     const mm=+m[1], dd=+m[2];
@@ -453,52 +457,47 @@ function parseExcelDate(value){
   return null;
 }
 function parseCurrency(v){
-  if(typeof v==='number') return v;
+  if(typeof v==='number') return isFinite(v)?v:0;
   const t=String(v??'').trim();
   if(!t) return 0;
-  const cleaned=t.replace(/₺/g,'').replace(/\./g,'').replace(/,/g,'.').replace(/[^\d.-]/g,'');
-  if(!cleaned||cleaned==='-'||cleaned==='.') return 0;
-  const normalized=cleaned.indexOf('-')>0?cleaned.replace(/-/g,''):cleaned;
-  const t2=normalized.replace(/(\..*)\./g,'$1');
-  const n=parseFloat(t2);
+  const noCurrency=t.replace(/₺/g,'').replace(/\s+/g,'');
+  const commaCount=(noCurrency.match(/,/g)||[]).length;
+  const dotCount=(noCurrency.match(/\./g)||[]).length;
+  let normalized=noCurrency;
+  if(commaCount>0 && dotCount>0){
+    normalized=noCurrency.replace(/\./g,'').replace(/,/g,'.');
+  }else if(commaCount>0){
+    normalized=noCurrency.replace(/,/g,'.');
+  }
+  normalized=normalized.replace(/[^\d.-]/g,'');
+  if(!normalized||normalized==='-'||normalized==='.') return 0;
+  const n=parseFloat(normalized);
   return isFinite(n)?n:0;
 }
-function isSkippableAdisyoDateCell(value){
-  if(value===undefined||value===null) return true;
-  const t=String(value).trim();
-  if(!t) return true;
-  return /^toplam\s*:?\s*$/i.test(t);
-}
-function hasAnyAdisyoSalesValue(values){
-  return values.some(v=>{
-    if(typeof v==='number') return Math.abs(v)>0;
-    const t=String(v??'').trim().toLowerCase();
-    if(!t || t==='undefined' || t==='toplam:') return false;
-    return /[\d₺]/.test(t);
-  });
-}
-function parseTotalWithFallback(toplamCell,getir,trendyol,migros){
-  const totalFromE=parseCurrency(toplamCell);
-  const sumFromParts=getir+trendyol+migros;
-  if(Number.isFinite(totalFromE) && totalFromE>0) return {total:totalFromE,usedFallback:false};
-  return {total:sumFromParts,usedFallback:true};
-}
 function extractAdisyoSalesRows(rows){
-  const out=[], errors=[], info=[];
-  for(let i=1;i<rows.length;i++){
+  const out=[], errors=[];
+  for(let i=0;i<rows.length;i++){
     const row=rows[i]||[];
     const rowNo=i+1;
-    const a=row[0],b=row[1],c=row[2],d=row[3],e=row[4];
-    if(isSkippableAdisyoDateCell(a)) continue;
-    const date=parseExcelDate(a);
-    if(!date){errors.push(`Satır ${rowNo}: A sütunu tarih olarak okunamadı (${String(a)}).`);continue;}
-    if(!hasAnyAdisyoSalesValue([b,c,d,e])){errors.push(`Satır ${rowNo}: satış sütunlarında geçerli değer bulunamadı.`);continue;}
-    const getir=parseCurrency(b), trendyol=parseCurrency(c), migros=parseCurrency(d);
-    const totalInfo=parseTotalWithFallback(e,getir,trendyol,migros);
-    if(totalInfo.usedFallback) info.push(`Satır ${rowNo} (${date}): E sütunu kullanılamadı, B+C+D kullanıldı.`);
-    out.push({date,t1:trendyol,t2:getir,t3:migros,t4:0,t5:0,total:totalInfo.total});
+    const rawDate=row[0];
+    const rawTotal=row[8];
+    const dateCell=cleanAdisyoDateText(rawDate);
+    const totalCell=String(rawTotal??'').trim();
+    if(!dateCell && !totalCell) continue;
+    if(/^toplam\s*:?\s*$/i.test(dateCell)) continue;
+    const date=parseExcelDate(dateCell);
+    if(!date){
+      if(dateCell || totalCell) errors.push(`Satır ${rowNo}: A sütunu geçerli tarih değil (${String(rawDate)}).`);
+      continue;
+    }
+    const total=parseCurrency(rawTotal);
+    if(!Number.isFinite(total)){
+      errors.push(`Satır ${rowNo} (${date}): I sütunu sayı olarak okunamadı (${String(rawTotal)}).`);
+      continue;
+    }
+    out.push({date,t1:0,t2:0,t3:0,t4:0,t5:total,total});
   }
-  return {records:out,errors,info};
+  return {records:out,errors,info:[]};
 }
 function askDuplicateAction(date){
   const choice=prompt(`${date} tarihli kayıt zaten var.\n"yaz" = üzerine yaz\n"ekle" = yeni kayıt ekle\n"iptal" = iptal`,`yaz`);
