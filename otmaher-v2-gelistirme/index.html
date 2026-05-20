@@ -454,15 +454,14 @@ function parseExcelDate(value){
   const txt=cleanAdisyoDateText(value);
   if(!txt || /^toplam\s*:?\s*$/i.test(txt)) return null;
   const m=txt.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})$/);
-  if(m){
-    const mm=+m[1], dd=+m[2];
-    let y=+m[3]; if(y<100) y+=2000;
-    const d=new Date(Date.UTC(y,mm-1,dd));
-    if(!isNaN(d.getTime()) && d.getUTCFullYear()===y && d.getUTCMonth()===(mm-1) && d.getUTCDate()===dd) return d.toISOString().slice(0,10);
-  }
-  const d2=new Date(txt);
-  if(!isNaN(d2)) return new Date(Date.UTC(d2.getFullYear(),d2.getMonth(),d2.getDate())).toISOString().slice(0,10);
-  return null;
+  if(!m) return null;
+  const mm=+m[1], dd=+m[2];
+  let y=+m[3];
+  if(y<100) y+=2000;
+  const d=new Date(Date.UTC(y,mm-1,dd));
+  if(isNaN(d.getTime())) return null;
+  if(d.getUTCFullYear()!==y||d.getUTCMonth()!==(mm-1)||d.getUTCDate()!==dd) return null;
+  return d.toISOString().slice(0,10);
 }
 function parseCurrency(v){
   if(v===null||v===undefined||v==='') return 0;
@@ -487,52 +486,16 @@ function parseCurrency(v){
   const n=parseFloat(t);
   return isFinite(n)?n:0;
 }
-function normalizeAdisyoHeader(v){
-  return String(v||'').toLowerCase().replace(/[₺()]/g,'').replace(/\s+/g,' ').trim();
-}
-function buildAdisyoHeaderMap(headerRow){
-  const map={};
-  const aliases={
-    tarih:['günlük ciro'],
-    nakit:['nakit','nakit₺'],
-    krediKarti:['kredi kartı','kredi karti'],
-    yemeksepeti:['ys online'],
-    getir:['getir online'],
-    trendyol:['trendyol o','trendyol'],
-    migros:['migros on','migros online'],
-    edenred:['edenred o','edenred'],
-    toplam:['toplam ₺','toplam'],
-    acikHesap:['açık hesap','acik hesap'],
-    borcinfo:['borcinfo','borginfo']
-  };
-  Object.entries(aliases).forEach(([key,names])=>{
-    map[key]=-1;
-    for(let i=0;i<headerRow.length;i++){
-      const h=normalizeAdisyoHeader(headerRow[i]);
-      if(names.includes(h)){map[key]=i;break;}
-    }
-  });
-  return map;
-}
 function extractAdisyoSalesRows(rows){
   const records=[], errors=[], info=[];
-  const debug={headerRow:-1,columns:[],readRows:0,skippedRows:0,first3:[]};
-  const headerIdx=rows.findIndex(r=>Array.isArray(r)&&r.some(c=>normalizeAdisyoHeader(c).includes('günlük ciro')));
+  const debug={headerRow:-1,columns:['tarih:1','getir:2','trendyol:3','migros:4','toplam:5'],readRows:0,skippedRows:0,first3:[]};
+  const headerIdx=rows.findIndex(r=>Array.isArray(r)&&cleanAdisyoDateText(r[0]).toLowerCase()==='günlük ciro');
   debug.headerRow=headerIdx>-1?headerIdx+1:-1;
   if(headerIdx<0) return {records,errors:["Başlık satırı bulunamadı (Günlük Ciro)."],info,debug};
-  const headerMap=buildAdisyoHeaderMap(rows[headerIdx]);
-  const required=['tarih','nakit','krediKarti','yemeksepeti','getir','trendyol','migros','edenred','toplam'];
-  const missing=required.filter(k=>headerMap[k]===-1);
-  debug.columns=Object.entries(headerMap).filter(([,idx])=>idx>-1).map(([k,idx])=>`${k}:${idx+1}`);
-  if(missing.length){
-    errors.push(`Eksik başlıklar: ${missing.join(', ')}.`);
-    return {records,errors,info,debug};
-  }
 
   for(let i=headerIdx+1;i<rows.length;i++){
     const row=Array.isArray(rows[i])?rows[i]:[];
-    const rowNo=i+1;
-    const rawDate=row[headerMap.tarih];
+    const rawDate=row[0];
     const dateText=cleanAdisyoDateText(rawDate);
     if(!dateText || /^toplam\s*:?\s*$/i.test(dateText) || /^undefined$/i.test(dateText)){
       debug.skippedRows++;
@@ -544,25 +507,11 @@ function extractAdisyoSalesRows(rows){
       continue;
     }
 
-    const cash=parseCurrency(row[headerMap.nakit]);
-    const card=parseCurrency(row[headerMap.krediKarti]);
-    const yemeksepeti=parseCurrency(row[headerMap.yemeksepeti]);
-    const getir=parseCurrency(row[headerMap.getir]);
-    const trendyol=parseCurrency(row[headerMap.trendyol]);
-    const migros=parseCurrency(row[headerMap.migros]);
-    const edenred=parseCurrency(row[headerMap.edenred]);
-    const total=parseCurrency(row[headerMap.toplam]);
-    const acikHesap=headerMap.acikHesap>-1?parseCurrency(row[headerMap.acikHesap]):0;
-    const borcinfo=headerMap.borcinfo>-1?parseCurrency(row[headerMap.borcinfo]):0;
-
-    const rawTotalCell=String(row[headerMap.toplam]??'').trim();
-    if(!rawTotalCell){
-      errors.push(`Satır ${rowNo} (${date}): Toplam sütunu boş.`);
-      debug.skippedRows++;
-      continue;
-    }
-
-    const rec={date,t1:trendyol,t2:getir,t3:migros,t4:yemeksepeti,t5:cash+card+edenred,total,meta:{acikHesap,borcinfo}};
+    const getir=parseCurrency(row[1]);
+    const trendyol=parseCurrency(row[2]);
+    const migros=parseCurrency(row[3]);
+    const total=parseCurrency(row[4]);
+    const rec={date,t1:trendyol,t2:getir,t3:migros,t4:0,t5:0,total,meta:{acikHesap:0,borcinfo:0}};
     records.push(rec);
     debug.readRows++;
     if(debug.first3.length<3) debug.first3.push(rec);
@@ -645,7 +594,17 @@ document.getElementById('xlsxLoad')?.addEventListener('click',async()=>{
     const ws=wb.Sheets[sheetName];
     const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
     const parsed=extractAdisyoSalesRows(rows);
-    if(!parsed.records.length){status.textContent='Aktarılabilir veri satırı bulunamadı. Lütfen Adisyo rapor düzenini kontrol edin.';if(parsed.debug){status.textContent+=` | Başlık satırı: ${parsed.debug.headerRow>0?parsed.debug.headerRow:'yok'} | Okunan: ${parsed.debug.readRows} | Atlanan: ${parsed.debug.skippedRows}`;}return;}
+    const previewParts=parsed.debug?[
+      `Başlık satırı: ${parsed.debug.headerRow>0?parsed.debug.headerRow:'bulunamadı'}`,
+      `Sütunlar: ${parsed.debug.columns.length?parsed.debug.columns.join(', '):'-'}`,
+      `Okunan: ${parsed.debug.readRows}`,
+      `Atlanan: ${parsed.debug.skippedRows}`,
+      `İlk 3 kayıt: ${parsed.debug.first3.length?JSON.stringify(parsed.debug.first3):'[]'}`
+    ]:[];
+    if(!parsed.records.length){
+      status.textContent='Aktarılabilir veri satırı bulunamadı. Lütfen Adisyo rapor düzenini kontrol edin.'+(previewParts.length?` | ${previewParts.join(' | ')}`:'');
+      return;
+    }
     const result=mergeImportedSales(parsed.records);
     saveTax();
     rTax();
@@ -653,8 +612,9 @@ document.getElementById('xlsxLoad')?.addEventListener('click',async()=>{
       `Aktarım tamamlandı. ${result.total} satır aktarıldı/işlendi.`,
       `(Yeni: ${result.inserted}, Üzerine yaz: ${result.updated}, Yeni kayıt ekle: ${result.appended}, Atlandı: ${result.skipped})`
     ];
-    if(parsed.debug){
-      notes.push(`Önizleme:\n- Bulunan başlık satırı numarası: ${parsed.debug.headerRow>0?parsed.debug.headerRow:'bulunamadı'}\n- Bulunan sütunlar: ${parsed.debug.columns.length?parsed.debug.columns.join(', '):'-'}\n- Okunan veri satırı sayısı: ${parsed.debug.readRows}\n- Atlanan satır sayısı: ${parsed.debug.skippedRows}\n- İlk 3 okunan kayıt: ${parsed.debug.first3.length?JSON.stringify(parsed.debug.first3):'[]'}`);
+    if(previewParts.length){
+      notes.push(`Önizleme:
+- ${previewParts.join('\n- ')}`);
     }
     if(parsed.info.length) notes.push(`Bilgi notları:\n- ${parsed.info.join('\n- ')}`);
     if(parsed.errors.length) notes.push(`Okunamayan satırlar:\n- ${parsed.errors.join('\n- ')}`);
