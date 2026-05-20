@@ -488,12 +488,19 @@ function parseCurrency(v){
   return isFinite(n)?n:0;
 }
 function normalizeAdisyoHeader(v){
-  return String(v||'').toLowerCase().replace(/[₺()]/g,'').replace(/\s+/g,' ').trim();
+  return String(v||'')
+    .toLowerCase()
+    .replace(/[₺()]/g,'')
+    .replace(/[çğıöşü]/g,ch=>({ç:'c',ğ:'g',ı:'i',ö:'o',ş:'s',ü:'u'}[ch]||ch))
+    .replace(/\s+/g,' ')
+    .trim();
 }
 function findColumnIndex(headerRow,aliases){
-  for(let i=0;i<headerRow.length;i++){
-    const h=normalizeAdisyoHeader(headerRow[i]);
-    if(aliases.some(a=>h.includes(a))) return i;
+  const cols=Array.isArray(headerRow)?headerRow:[];
+  const normalizedAliases=(aliases||[]).map(a=>normalizeAdisyoHeader(a));
+  for(let i=0;i<cols.length;i++){
+    const h=normalizeAdisyoHeader(cols[i]);
+    if(normalizedAliases.some(a=>h.includes(a))) return i;
   }
   return -1;
 }
@@ -503,8 +510,8 @@ function extractAdisyoSalesRows(rows){
   if(!Array.isArray(rows)||!rows.length) return {records,errors:["Sayfa boş veya okunamadı."],info,debug};
 
   const headerRow=Array.isArray(rows[0])?rows[0]:[];
-  const firstHeader=normalizeHeader(headerRow[0]);
-  if(!firstHeader.includes('günlük ciro')){
+  const firstHeader=normalizeAdisyoHeader(headerRow[0]);
+  if(!firstHeader.includes('gunluk ciro')){
     errors.push('A1 başlığı "Günlük Ciro" olmalı.');
     return {records,errors,info,debug};
   }
