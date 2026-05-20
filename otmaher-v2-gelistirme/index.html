@@ -59,6 +59,14 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .tabbtn.active{background:rgba(52,211,153,.2);border-color:rgba(52,211,153,.5)}
 .page{display:none}.page.active{display:block}
 .tableWrap{max-height:360px;overflow:auto;border:1px solid var(--line);border-radius:12px}
+.summaryGrid{display:grid;grid-template-columns:repeat(3,minmax(160px,1fr));gap:10px;margin:12px 0}
+@media (max-width:980px){.summaryGrid{grid-template-columns:repeat(2,minmax(140px,1fr))}}
+.barList{display:grid;gap:8px;margin-top:8px}
+.barRow{display:grid;grid-template-columns:140px 1fr;gap:10px;align-items:center}
+@media (max-width:980px){.barRow{grid-template-columns:1fr}}
+.barLabel{font-size:12px;color:var(--text);display:flex;justify-content:space-between;gap:8px}
+.barTrack{height:12px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
+.barFill{height:100%;border-radius:999px;background:linear-gradient(90deg,rgba(52,211,153,.95),rgba(16,185,129,.65))}
 </style>
 </head>
 <body>
@@ -532,12 +540,33 @@ function mergeImportedSales(imported){
   TAX_STATE.dailySales.sort((a,b)=>a.date.localeCompare(b.date));
   return {inserted,updated,appended,skipped,total:inserted+updated+appended};
 }
+function getDailySalesPlatformSummary(){
+  const s={yemeksepeti:0,getir:0,trendyol:0,migros:0,cash:0,general:0};
+  TAX_STATE.dailySales.forEach(r=>{
+    s.trendyol+=tv(r.t1);
+    s.getir+=tv(r.t2);
+    s.migros+=tv(r.t3);
+    s.yemeksepeti+=tv(r.t4);
+    s.cash+=tv(r.t5);
+  });
+  s.general=s.yemeksepeti+s.getir+s.trendyol+s.migros+s.cash;
+  return s;
+}
 
 function rTax(){const c=taxCompute();document.getElementById('page-vergiozeti').innerHTML=`<div class="kpi"><div class="k"><div class="t">Toplam satış KDV dahil</div><div class="v">${fmt(c.salesIncl)}</div></div><div class="k"><div class="t">KDV hariç satış</div><div class="v">${fmt(c.salesEx)}</div></div><div class="k"><div class="t">KDV hariç gider</div><div class="v">${fmt(c.expEx)}</div></div><div class="k"><div class="t">Tahmini gerçek kâr</div><div class="v ${c.realProfit>=0?'acc':'dng'}">${fmt(c.realProfit)}</div></div><div class="k"><div class="t">Tahmini ödenecek KDV</div><div class="v">${fmt(c.payVat)}</div></div><div class="k"><div class="t">Tahmini geçici vergi</div><div class="v">${fmt(c.tempTax)}</div></div><div class="k"><div class="t">Açık borç toplamı</div><div class="v warn">${fmt(c.openDebt)}</div></div></div>`;
 // forms minimal
 document.getElementById('page-vergiayarlari').innerHTML=`<section class="card"><div class="hd"><h2>Vergi Ayarları</h2></div><div class="bd"><div class="row"><div class="col"><label>Satış KDV %</label><input id="taxSalesVat" type="number" value="${TAX_STATE.settings.salesVat}"></div><div class="col"><label>Geçici vergi oranı %</label><input id="taxTemp" type="number" value="${TAX_STATE.settings.tempTaxRate}"></div></div><div class="row" style="margin-top:10px"><div class="col"><button id="taxSetSave">Kaydet</button></div></div></div></section>`;
 document.getElementById('taxSetSave')?.addEventListener('click',()=>{TAX_STATE.settings.salesVat=tv(document.getElementById('taxSalesVat').value);TAX_STATE.settings.tempTaxRate=tv(document.getElementById('taxTemp').value);saveTax();rTax();});
-let ds=`<section class="card"><div class="hd"><h2>Günlük Satış</h2></div><div class="bd"><div class="row"><div class="col"><label>Tarih</label><input id="dsDate" type="date"></div><div class="col"><label>Trendyol</label><input id="ds1" type="number"></div><div class="col"><label>Getir</label><input id="ds2" type="number"></div><div class="col"><label>Migros</label><input id="ds3" type="number"></div><div class="col"><label>Yemeksepeti</label><input id="ds4" type="number"></div><div class="col"><label>Elden / dükkân</label><input id="ds5" type="number"></div><div class="col" style="display:flex;align-items:end;gap:8px"><button id="dsAdd">${TAX_EDIT.dailySales===null?'Ekle':'Güncelle'}</button><button id="dsCancel" class="btnghost">İptal</button></div></div><div class="tableWrap"><table><thead><tr><th>Tarih</th><th>Trendyol</th><th>Getir</th><th>Migros</th><th>Yemeksepeti</th><th>Elden</th><th>Günlük toplam</th><th></th></tr></thead><tbody>${TAX_STATE.dailySales.map((r,i)=>`<tr><td>${r.date}</td><td>${fmt(r.t1)}</td><td>${fmt(r.t2)}</td><td>${fmt(r.t3)}</td><td>${fmt(r.t4)}</td><td>${fmt(r.t5)}</td><td><b>${fmt(r.total)}</b></td><td><button data-ds-edit='${i}'>Düzenle</button> <button class='btndanger' data-ds='${i}'>Sil</button></td></tr>`).join('')}</tbody></table></div></div></section>`;document.getElementById('page-gunluksatis').innerHTML=ds;
+const platformSummary=getDailySalesPlatformSummary();
+const platformBars=[
+  ['Yemeksepeti',platformSummary.yemeksepeti],
+  ['Getir',platformSummary.getir],
+  ['Trendyol',platformSummary.trendyol],
+  ['Migros',platformSummary.migros],
+  ['Elden / Nakit',platformSummary.cash]
+];
+const maxPlatform=Math.max(...platformBars.map(([,v])=>v),0);
+let ds=`<section class="card"><div class="hd"><h2>Günlük Satış</h2></div><div class="bd"><div class="row"><div class="col"><label>Tarih</label><input id="dsDate" type="date"></div><div class="col"><label>Trendyol</label><input id="ds1" type="number"></div><div class="col"><label>Getir</label><input id="ds2" type="number"></div><div class="col"><label>Migros</label><input id="ds3" type="number"></div><div class="col"><label>Yemeksepeti</label><input id="ds4" type="number"></div><div class="col"><label>Elden / dükkân</label><input id="ds5" type="number"></div><div class="col" style="display:flex;align-items:end;gap:8px"><button id="dsAdd">${TAX_EDIT.dailySales===null?'Ekle':'Güncelle'}</button><button id="dsCancel" class="btnghost">İptal</button></div></div><div class="summaryGrid"><div class="k"><div class="t">Yemeksepeti toplam</div><div class="v">${fmt(platformSummary.yemeksepeti)}</div></div><div class="k"><div class="t">Getir toplam</div><div class="v">${fmt(platformSummary.getir)}</div></div><div class="k"><div class="t">Trendyol toplam</div><div class="v">${fmt(platformSummary.trendyol)}</div></div><div class="k"><div class="t">Migros toplam</div><div class="v">${fmt(platformSummary.migros)}</div></div><div class="k"><div class="t">Elden / Nakit toplam</div><div class="v">${fmt(platformSummary.cash)}</div></div><div class="k"><div class="t">Genel toplam</div><div class="v acc">${fmt(platformSummary.general)}</div></div></div><div class="k"><div class="t">Platformlara göre satış grafiği</div><div class="barList">${platformBars.map(([name,val])=>{const pct=maxPlatform>0?(val/maxPlatform)*100:0;return `<div class="barRow"><div class="barLabel"><span>${name}</span><b>${fmt(val)}</b></div><div class="barTrack"><div class="barFill" style="width:${pct.toFixed(2)}%"></div></div></div>`;}).join('')}</div></div><div class="tableWrap" style="margin-top:12px"><table><thead><tr><th>Tarih</th><th>Trendyol</th><th>Getir</th><th>Migros</th><th>Yemeksepeti</th><th>Elden</th><th>Günlük toplam</th><th></th></tr></thead><tbody>${TAX_STATE.dailySales.map((r,i)=>`<tr><td>${r.date}</td><td>${fmt(r.t1)}</td><td>${fmt(r.t2)}</td><td>${fmt(r.t3)}</td><td>${fmt(r.t4)}</td><td>${fmt(r.t5)}</td><td><b>${fmt(r.total)}</b></td><td><button data-ds-edit='${i}'>Düzenle</button> <button class='btndanger' data-ds='${i}'>Sil</button></td></tr>`).join('')}</tbody></table></div></div></section>`;document.getElementById('page-gunluksatis').innerHTML=ds;
 if(TAX_EDIT.dailySales!==null&&TAX_STATE.dailySales[TAX_EDIT.dailySales]){const r=TAX_STATE.dailySales[TAX_EDIT.dailySales];dsDate.value=r.date;ds1.value=r.t1;ds2.value=r.t2;ds3.value=r.t3;ds4.value=r.t4;ds5.value=r.t5}
 document.getElementById('dsAdd')?.addEventListener('click',()=>{const d=document.getElementById('dsDate').value;if(!d){alert('Tarih zorunlu');return} ;const t1=tv(ds1.value),t2=tv(ds2.value),t3=tv(ds3.value),t4=tv(ds4.value),t5=tv(ds5.value);const rec={date:d,t1,t2,t3,t4,t5,total:t1+t2+t3+t4+t5};if(TAX_EDIT.dailySales===null){TAX_STATE.dailySales.push(rec)}else{TAX_STATE.dailySales[TAX_EDIT.dailySales]=rec;TAX_EDIT.dailySales=null}saveTax();rTax();});document.getElementById('dsCancel')?.addEventListener('click',()=>{TAX_EDIT.dailySales=null;rTax();});document.querySelectorAll('[data-ds-edit]').forEach(b=>b.onclick=()=>{TAX_EDIT.dailySales=+b.dataset.dsEdit;rTax();});document.querySelectorAll('[data-ds]').forEach(b=>b.onclick=()=>{if(confirm('Silinsin mi?')){TAX_STATE.dailySales.splice(+b.dataset.ds,1);if(TAX_EDIT.dailySales===+b.dataset.ds)TAX_EDIT.dailySales=null;saveTax();rTax();}});
 document.getElementById('page-veriaktar').innerHTML=`<section class="card"><div class="hd"><h2>Veri Aktar</h2></div><div class="bd"><div class="mini">Adisyo günlük ciro raporunu .xlsx olarak yükleyin. Sabit kolon düzenine göre (A: Tarih ... I: Toplam) platform dağılımı ve toplam satış otomatik ayrıştırılır.</div><div class="row" style="margin-top:10px"><div class="col"><label>Dosya (.xlsx)</label><input id="xlsxFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></div><div class="col" style="display:flex;align-items:end"><button id="xlsxLoad">Excel Yükle</button></div></div><div class="mini" id="importStatus" style="margin-top:10px">Hazır.</div></div></section>`;
