@@ -470,55 +470,97 @@ function parseCurrency(v){
   let t=String(v).trim();
   if(!t) return 0;
   t=t.replace(/₺/g,'').replace(/\s+/g,'');
-  t=t.replace(/\./g,'').replace(/,/g,'.');
+  const hasComma=t.includes(',');
+  const hasDot=t.includes('.');
+  if(hasComma&&hasDot){
+    const decimalIsComma=t.lastIndexOf(',')>t.lastIndexOf('.');
+    if(decimalIsComma){t=t.replace(/\./g,'').replace(/,/g,'.');}
+    else{t=t.replace(/,/g,'');}
+  }else if(hasComma){
+    t=t.replace(/\./g,'').replace(/,/g,'.');
+  }else if(hasDot){
+    const parts=t.split('.');
+    if(parts.length>2 || (parts.length===2 && parts[1].length===3)){t=t.replace(/\./g,'');}
+  }
   t=t.replace(/[^\d.-]/g,'');
   if(!t||t==='-'||t==='.') return 0;
   const n=parseFloat(t);
   return isFinite(n)?n:0;
 }
+function normalizeAdisyoHeader(v){
+  return String(v||'').toLowerCase().replace(/[₺()]/g,'').replace(/\s+/g,' ').trim();
+}
+function buildAdisyoHeaderMap(headerRow){
+  const map={};
+  const aliases={
+    tarih:['günlük ciro'],
+    nakit:['nakit','nakit₺'],
+    krediKarti:['kredi kartı','kredi karti'],
+    yemeksepeti:['ys online'],
+    getir:['getir online'],
+    trendyol:['trendyol o','trendyol'],
+    migros:['migros on','migros online'],
+    edenred:['edenred o','edenred'],
+    toplam:['toplam ₺','toplam'],
+    acikHesap:['açık hesap','acik hesap'],
+    borcinfo:['borcinfo','borginfo']
+  };
+  Object.entries(aliases).forEach(([key,names])=>{
+    map[key]=-1;
+    for(let i=0;i<headerRow.length;i++){
+      const h=normalizeAdisyoHeader(headerRow[i]);
+      if(names.includes(h)){map[key]=i;break;}
+    }
+  });
+  return map;
+}
+function rowHasIgnoreText(row){
+  const ignorePatterns=[/sipariş/i,/açık\s*hesap\s*borç/i,/acik\s*hesap\s*borc/i,/\bborç\b/i,/\bborc\b/i,/borcinfo/i,/borginfo/i];
+  return (Array.isArray(row)?row:[]).some(cell=>ignorePatterns.some(p=>p.test(String(cell||''))));
+}
 function extractAdisyoSalesRows(rows){
-  const records=[], errors=[];
-  for(let i=0;i<rows.length;i++){
+  const records=[], errors=[], info=[];
+  const headerIdx=rows.findIndex(r=>Array.isArray(r)&&r.some(c=>normalizeAdisyoHeader(c)==='günlük ciro'));
+  if(headerIdx<0) return {records,errors:["Başlık satırı bulunamadı (Günlük Ciro)."],info};
+  const headerMap=buildAdisyoHeaderMap(rows[headerIdx]);
+  const required=['tarih','nakit','krediKarti','yemeksepeti','getir','trendyol','migros','edenred','toplam'];
+  const missing=required.filter(k=>headerMap[k]===-1);
+  if(missing.length){
+    errors.push(`Eksik başlıklar: ${missing.join(', ')}.`);
+    return {records,errors,info};
+  }
+
+  for(let i=headerIdx+1;i<rows.length;i++){
     const row=Array.isArray(rows[i])?rows[i]:[];
     const rowNo=i+1;
-    const rawDate=row[0];
+    const rawDate=row[headerMap.tarih];
     const dateText=cleanAdisyoDateText(rawDate);
     if(!dateText) continue;
     if(/^toplam\s*:?\s*$/i.test(dateText) || /^undefined$/i.test(dateText)) continue;
+    if(rowHasIgnoreText(row)) continue;
     const date=parseExcelDate(dateText);
-    if(!date){
-      errors.push(`Satır ${rowNo}: A sütunundaki tarih okunamadı (${String(rawDate)}).`);
-      continue;
-    }
-    const cash=parseCurrency(row[1]);
-    const card=parseCurrency(row[2]);
-    const yemeksepeti=parseCurrency(row[3]);
-    const getir=parseCurrency(row[4]);
-    const trendyol=parseCurrency(row[5]);
-    const migros=parseCurrency(row[6]);
-    const edenred=parseCurrency(row[7]);
-    const total=parseCurrency(row[8]);
-    const acikHesap=parseCurrency(row[9]);
-    const borginfo=parseCurrency(row[10]);
+    if(!date) continue;
 
-    const rawTotalCell=String(row[8]??'').trim();
+    const cash=parseCurrency(row[headerMap.nakit]);
+    const card=parseCurrency(row[headerMap.krediKarti]);
+    const yemeksepeti=parseCurrency(row[headerMap.yemeksepeti]);
+    const getir=parseCurrency(row[headerMap.getir]);
+    const trendyol=parseCurrency(row[headerMap.trendyol]);
+    const migros=parseCurrency(row[headerMap.migros]);
+    const edenred=parseCurrency(row[headerMap.edenred]);
+    const total=parseCurrency(row[headerMap.toplam]);
+    const acikHesap=headerMap.acikHesap>-1?parseCurrency(row[headerMap.acikHesap]):0;
+    const borcinfo=headerMap.borcinfo>-1?parseCurrency(row[headerMap.borcinfo]):0;
+
+    const rawTotalCell=String(row[headerMap.toplam]??'').trim();
     if(!rawTotalCell){
-      errors.push(`Satır ${rowNo} (${date}): I sütunu (Toplam) boş.`);
+      errors.push(`Satır ${rowNo} (${date}): Toplam sütunu boş.`);
       continue;
     }
 
-    records.push({
-      date,
-      t1:trendyol,
-      t2:getir,
-      t3:migros,
-      t4:yemeksepeti,
-      t5:cash+card+edenred,
-      total,
-      meta:{acikHesap,borginfo}
-    });
+    records.push({date,t1:trendyol,t2:getir,t3:migros,t4:yemeksepeti,t5:cash+card+edenred,total,meta:{acikHesap,borcinfo}});
   }
-  return {records,errors,info:[]};
+  return {records,errors,info};
 }
 function askDuplicateAction(date){
   const choice=prompt(`${date} tarihli kayıt zaten var.\n"yaz" = üzerine yaz\n"ekle" = yeni kayıt ekle\n"iptal" = iptal`,`yaz`);
@@ -580,7 +622,7 @@ const maxPlatform=Math.max(...platformBars.map(([,v])=>v),0);
 let ds=`<section class="card"><div class="hd"><h2>Günlük Satış</h2></div><div class="bd"><div class="row"><div class="col"><label>Tarih</label><input id="dsDate" type="date"></div><div class="col"><label>Trendyol</label><input id="ds1" type="number"></div><div class="col"><label>Getir</label><input id="ds2" type="number"></div><div class="col"><label>Migros</label><input id="ds3" type="number"></div><div class="col"><label>Yemeksepeti</label><input id="ds4" type="number"></div><div class="col"><label>Elden / dükkân</label><input id="ds5" type="number"></div><div class="col" style="display:flex;align-items:end;gap:8px"><button id="dsAdd">${TAX_EDIT.dailySales===null?'Ekle':'Güncelle'}</button><button id="dsCancel" class="btnghost">İptal</button></div></div><div class="row" style="margin-top:10px"><div class="col"><label>Rapor başlangıç tarihi</label><input id="dsReportStart" type="date" value="${TAX_STATE.settings.reportStart||''}"></div><div class="col"><label>Rapor bitiş tarihi</label><input id="dsReportEnd" type="date" value="${TAX_STATE.settings.reportEnd||''}"></div><div class="col" style="display:flex;align-items:end"><button id="dsReportClear" class="btn2">Dönemi Temizle</button></div></div><div class="mini">Platform özeti ve grafik sadece seçili vergi dönemi kayıtlarından hesaplanır.</div><div class="summaryGrid"><div class="k"><div class="t">Yemeksepeti toplam</div><div class="v">${fmt(platformSummary.yemeksepeti)}</div></div><div class="k"><div class="t">Getir toplam</div><div class="v">${fmt(platformSummary.getir)}</div></div><div class="k"><div class="t">Trendyol toplam</div><div class="v">${fmt(platformSummary.trendyol)}</div></div><div class="k"><div class="t">Migros toplam</div><div class="v">${fmt(platformSummary.migros)}</div></div><div class="k"><div class="t">Elden / Nakit toplam</div><div class="v">${fmt(platformSummary.cash)}</div></div><div class="k"><div class="t">Genel toplam</div><div class="v acc">${fmt(platformSummary.general)}</div></div></div><div class="k"><div class="t">Platformlara göre satış grafiği</div><div class="barList">${platformBars.map(([name,val])=>{const pct=maxPlatform>0?(val/maxPlatform)*100:0;return `<div class="barRow"><div class="barLabel"><span>${name}</span><b>${fmt(val)}</b></div><div class="barTrack"><div class="barFill" style="width:${pct.toFixed(2)}%"></div></div></div>`;}).join('')}</div></div><div class="tableWrap" style="margin-top:12px"><table><thead><tr><th>Tarih</th><th>Trendyol</th><th>Getir</th><th>Migros</th><th>Yemeksepeti</th><th>Elden</th><th>Günlük toplam</th><th></th></tr></thead><tbody>${TAX_STATE.dailySales.map((r,i)=>`<tr><td>${r.date}</td><td>${fmt(r.t1)}</td><td>${fmt(r.t2)}</td><td>${fmt(r.t3)}</td><td>${fmt(r.t4)}</td><td>${fmt(r.t5)}</td><td><b>${fmt(r.total)}</b></td><td><button data-ds-edit='${i}'>Düzenle</button> <button class='btndanger' data-ds='${i}'>Sil</button></td></tr>`).join('')}</tbody></table></div></div></section>`;document.getElementById('page-gunluksatis').innerHTML=ds;
 if(TAX_EDIT.dailySales!==null&&TAX_STATE.dailySales[TAX_EDIT.dailySales]){const r=TAX_STATE.dailySales[TAX_EDIT.dailySales];dsDate.value=r.date;ds1.value=r.t1;ds2.value=r.t2;ds3.value=r.t3;ds4.value=r.t4;ds5.value=r.t5}
 document.getElementById('dsAdd')?.addEventListener('click',()=>{const d=document.getElementById('dsDate').value;if(!d){alert('Tarih zorunlu');return} ;const t1=tv(ds1.value),t2=tv(ds2.value),t3=tv(ds3.value),t4=tv(ds4.value),t5=tv(ds5.value);const rec={date:d,t1,t2,t3,t4,t5,total:t1+t2+t3+t4+t5};if(TAX_EDIT.dailySales===null){TAX_STATE.dailySales.push(rec)}else{TAX_STATE.dailySales[TAX_EDIT.dailySales]=rec;TAX_EDIT.dailySales=null}saveTax();rTax();});document.getElementById('dsReportStart')?.addEventListener('change',e=>{TAX_STATE.settings.reportStart=e.target.value||'';if(TAX_STATE.settings.reportEnd&&TAX_STATE.settings.reportStart&&TAX_STATE.settings.reportStart>TAX_STATE.settings.reportEnd){TAX_STATE.settings.reportEnd=TAX_STATE.settings.reportStart;}saveTax();rTax();});document.getElementById('dsReportEnd')?.addEventListener('change',e=>{TAX_STATE.settings.reportEnd=e.target.value||'';if(TAX_STATE.settings.reportStart&&TAX_STATE.settings.reportEnd&&TAX_STATE.settings.reportStart>TAX_STATE.settings.reportEnd){TAX_STATE.settings.reportStart=TAX_STATE.settings.reportEnd;}saveTax();rTax();});document.getElementById('dsReportClear')?.addEventListener('click',()=>{TAX_STATE.settings.reportStart='';TAX_STATE.settings.reportEnd='';saveTax();rTax();});document.getElementById('dsCancel')?.addEventListener('click',()=>{TAX_EDIT.dailySales=null;rTax();});document.querySelectorAll('[data-ds-edit]').forEach(b=>b.onclick=()=>{TAX_EDIT.dailySales=+b.dataset.dsEdit;rTax();});document.querySelectorAll('[data-ds]').forEach(b=>b.onclick=()=>{if(confirm('Silinsin mi?')){TAX_STATE.dailySales.splice(+b.dataset.ds,1);if(TAX_EDIT.dailySales===+b.dataset.ds)TAX_EDIT.dailySales=null;saveTax();rTax();}});
-document.getElementById('page-veriaktar').innerHTML=`<section class="card"><div class="hd"><h2>Veri Aktar</h2></div><div class="bd"><div class="mini">Adisyo günlük ciro raporunu .xlsx olarak yükleyin. Sabit kolon düzenine göre (A: Tarih ... I: Toplam) platform dağılımı ve toplam satış otomatik ayrıştırılır.</div><div class="row" style="margin-top:10px"><div class="col"><label>Dosya (.xlsx)</label><input id="xlsxFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></div><div class="col" style="display:flex;align-items:end"><button id="xlsxLoad">Excel Yükle</button></div></div><div class="mini" id="importStatus" style="margin-top:10px">Hazır.</div></div></section>`;
+document.getElementById('page-veriaktar').innerHTML=`<section class="card"><div class="hd"><h2>Veri Aktar</h2></div><div class="bd"><div class="mini">Adisyo günlük ciro raporunu .xlsx olarak yükleyin. Başlığa göre otomatik eşleşir (sütun sırası değişebilir) platform dağılımı ve toplam satış otomatik ayrıştırılır.</div><div class="row" style="margin-top:10px"><div class="col"><label>Dosya (.xlsx)</label><input id="xlsxFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></div><div class="col" style="display:flex;align-items:end"><button id="xlsxLoad">Excel Yükle</button></div></div><div class="mini" id="importStatus" style="margin-top:10px">Hazır.</div></div></section>`;
 document.getElementById('xlsxLoad')?.addEventListener('click',async()=>{
   const status=document.getElementById('importStatus');
   const btn=document.getElementById('xlsxLoad');
