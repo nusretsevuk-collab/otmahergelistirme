@@ -453,34 +453,26 @@ function parseCurrency(v){
   const n=parseFloat(t);
   return isFinite(n)?n:0;
 }
-function extractSalesRows(rows){
-  const out=[];
-  for(const row of rows){
-    const keys=Object.keys(row);
-    if(!keys.length) continue;
-    const norm=keys.map(k=>normalizeHeader(k));
-    const dateKey=keys[norm.findIndex(k=>/tarih|date|gün/.test(k))];
-    const totalKey=keys[norm.findIndex(k=>/toplam|ciro|satış|satis|genel toplam|günlük toplam/.test(k))];
-    if(dateKey&&totalKey){
-      const date=parseExcelDate(row[dateKey]);
-      const total=parseCurrency(row[totalKey]);
-      if(date && total>0){
-        const rec={date,total,t1:0,t2:0,t3:0,t4:0,t5:0};
-        keys.forEach((k)=>{
-          const nk=normalizeHeader(k); const val=parseCurrency(row[k]);
-          if(/trendyol/.test(nk)) rec.t1=val;
-          else if(/getir/.test(nk)) rec.t2=val;
-          else if(/migros/.test(nk)) rec.t3=val;
-          else if(/yemeksepeti/.test(nk)) rec.t4=val;
-          else if(/elden|dükkan|dukkan|nakit/.test(nk)) rec.t5=val;
-        });
-        const pTotal=rec.t1+rec.t2+rec.t3+rec.t4+rec.t5;
-        if(pTotal>0) rec.total=pTotal;
-        out.push(rec);
-      }
+function extractAdisyoSalesRows(rows){
+  const out=[], errors=[], mismatches=[];
+  for(let i=1;i<rows.length;i++){
+    const row=rows[i]||[];
+    const rowNo=i+1;
+    const a=row[0],b=row[1],c=row[2],d=row[3],e=row[4];
+    const rowText=[a,b,c,d,e,row[5],row[6]].map(x=>String(x||'').toLowerCase()).join(' ');
+    if(!row.some(v=>String(v??'').trim()!=='')) continue;
+    if(/toplam\s*:/.test(rowText)) continue;
+    const date=parseExcelDate(a);
+    if(!date){errors.push(`Satır ${rowNo} okunamadı (tarih geçersiz).`);continue;}
+    const getir=parseCurrency(b), trendyol=parseCurrency(c), migros=parseCurrency(d), topFromE=parseCurrency(e);
+    const totalFromParts=getir+trendyol+migros;
+    const total=topFromE>0?topFromE:totalFromParts;
+    if(topFromE>0 && Math.abs(topFromE-totalFromParts)>0.01){
+      mismatches.push(`${date}: E toplamı ${fmt(topFromE)} ≠ B+C+D ${fmt(totalFromParts)}`);
     }
+    out.push({date,t1:trendyol,t2:getir,t3:migros,t4:0,t5:0,total});
   }
-  return out;
+  return {records:out,errors,mismatches};
 }
 function mergeImportedSales(imported){
   let inserted=0,updated=0,added=0,skipped=0;
@@ -513,14 +505,23 @@ document.getElementById('xlsxLoad')?.addEventListener('click',async()=>{
     if(!f){status.textContent='Lütfen bir .xlsx dosyası seçin.';return;}
     const ab=await f.arrayBuffer();
     const wb=XLSX.read(ab,{type:'array',cellDates:true});
-    const ws=wb.Sheets[wb.SheetNames[0]];
-    const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
-    const imported=extractSalesRows(rows);
-    if(!imported.length){status.textContent='Uygun tarih/toplam ciro satırı bulunamadı.';return;}
-    const result=mergeImportedSales(imported);
+    const sheetName=(wb.SheetNames.find(n=>String(n).toLowerCase()==='data'))||wb.SheetNames[0];
+    const ws=wb.Sheets[sheetName];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+    const parsed=extractAdisyoSalesRows(rows);
+    if(!parsed.records.length){status.textContent='Uygun veri satırı bulunamadı.';return;}
+    const result=mergeImportedSales(parsed.records);
     saveTax();
     rTax();
-    alert(`Aktarım tamamlandı. ${result.total} kayıt işlendi. (Yeni: ${result.inserted}, Üzerine yaz: ${result.updated}, Ekle: ${result.added}, Atlandı: ${result.skipped})`);
+    const notes=[
+      `Aktarım tamamlandı. ${result.total} satır aktarıldı/işlendi.`,
+      `(Yeni: ${result.inserted}, Üzerine yaz: ${result.updated}, Ekle: ${result.added}, Atlandı: ${result.skipped})`
+    ];
+    if(parsed.mismatches.length) notes.push(`Toplam farkı olan satırlar:\n- ${parsed.mismatches.join('\n- ')}`);
+    if(parsed.errors.length) notes.push(`Okunamayan satırlar:\n- ${parsed.errors.join('\n- ')}`);
+    const msg=notes.join('\n');
+    status.textContent=msg.replace(/\n/g,' ');
+    alert(msg);
   }catch(err){
     console.error(err);
     status.textContent='İçe aktarma sırasında hata oluştu.';
