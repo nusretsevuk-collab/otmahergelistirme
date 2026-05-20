@@ -452,10 +452,10 @@ function parseExcelDate(value){
     return new Date(Date.UTC(value.getFullYear(),value.getMonth(),value.getDate())).toISOString().slice(0,10);
   }
   const txt=cleanAdisyoDateText(value);
-  if(!txt || /^toplam\s*:?\s*$/i.test(txt)) return null;
+  if(!txt || /^toplam\s*:?\s*$/i.test(txt) || /^undefined$/i.test(txt)) return null;
   const m=txt.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})$/);
   if(m){
-    const dd=+m[1], mm=+m[2];
+    const mm=+m[1], dd=+m[2];
     let y=+m[3]; if(y<100) y+=2000;
     const d=new Date(Date.UTC(y,mm-1,dd));
     if(!isNaN(d.getTime()) && d.getUTCFullYear()===y && d.getUTCMonth()===(mm-1) && d.getUTCDate()===dd) return d.toISOString().slice(0,10);
@@ -469,90 +469,21 @@ function parseCurrency(v){
   if(typeof v==='number') return isFinite(v)?v:0;
   let t=String(v).trim();
   if(!t) return 0;
-  t=t.replace(/₺/g,'').replace(/\s+/g,'');
-  const hasComma=t.includes(',');
-  const hasDot=t.includes('.');
-  if(hasComma&&hasDot){
-    const decimalIsComma=t.lastIndexOf(',')>t.lastIndexOf('.');
-    if(decimalIsComma){t=t.replace(/\./g,'').replace(/,/g,'.');}
-    else{t=t.replace(/,/g,'');}
-  }else if(hasComma){
-    t=t.replace(/\./g,'').replace(/,/g,'.');
-  }else if(hasDot){
-    const parts=t.split('.');
-    if(parts.length>2 || (parts.length===2 && parts[1].length===3)){t=t.replace(/\./g,'');}
-  }
+  t=t.replace(/₺/g,'').replace(/\s+/g,'').replace(/\./g,'').replace(/,/g,'.');
   t=t.replace(/[^\d.-]/g,'');
   if(!t||t==='-'||t==='.') return 0;
   const n=parseFloat(t);
   return isFinite(n)?n:0;
 }
-  codex/fix-adisyo-import-for-daily-report-ywrib4
-function normalizeAdisyoHeader(v){
-  return String(v||'')
-    .toLowerCase()
-    .replace(/[₺()]/g,'')
-    .replace(/[çğıöşü]/g,ch=>({ç:'c',ğ:'g',ı:'i',ö:'o',ş:'s',ü:'u'}[ch]||ch))
-    .replace(/\s+/g,' ')
-    .trim();
-}
-function findColumnIndex(headerRow,aliases){
-  const cols=Array.isArray(headerRow)?headerRow:[];
-  const normalizedAliases=(aliases||[]).map(a=>normalizeAdisyoHeader(a));
-  for(let i=0;i<cols.length;i++){
-    const h=normalizeAdisyoHeader(cols[i]);
-    if(normalizedAliases.some(a=>h.includes(a))) return i;
-  }
-  return -1;
-}
 function extractAdisyoSalesRows(rows){
   const records=[], errors=[], info=[];
-  const debug={headerRow:1,columns:[],readRows:0,skippedRows:0,first3:[]};
+  const debug={sheet:'İlk sayfa',columns:['A:tarih','B:nakit','C:kredi kartı','D:ys online','E:getir online','F:trendyol','G:migros on','H:edenred','I:toplam','J:açık hesap','K:borginfo'],readRows:0,skippedRows:0,first3:[]};
   if(!Array.isArray(rows)||!rows.length) return {records,errors:["Sayfa boş veya okunamadı."],info,debug};
 
-  const headerRow=Array.isArray(rows[0])?rows[0]:[];
-  const firstHeader=normalizeAdisyoHeader(headerRow[0]);
-  if(!firstHeader.includes('gunluk ciro')){
-    errors.push('A1 başlığı "Günlük Ciro" olmalı.');
-    return {records,errors,info,debug};
-  }
-
-  const cols={
-    tarih:0,
-    yemeksepeti:findColumnIndex(headerRow,['ys online','yemeksepeti']),
-    getir:findColumnIndex(headerRow,['getir online','getir']),
-    trendyol:findColumnIndex(headerRow,['trendyol online','trendyol']),
-    migros:findColumnIndex(headerRow,['migros online','migros']),
-    toplam:findColumnIndex(headerRow,['toplam satış','toplam satıs','toplam']),
-    acikHesap:findColumnIndex(headerRow,['açık hesap borçinfo','acik hesap borcinfo','açık hesap','acik hesap','borçinfo','borcinfo'])
-  };
-  const must=['yemeksepeti','getir','trendyol','migros','toplam'];
-  const missing=must.filter(k=>cols[k]===-1);
-  debug.columns=Object.entries(cols).filter(([,idx])=>idx>-1).map(([k,idx])=>`${k}:${idx+1}`);
-  if(missing.length){
-    errors.push(`Eksik başlıklar: ${missing.join(', ')}.`);
-
-function extractAdisyoSalesRows(rows){
-  const records=[], errors=[], info=[];
-  const debug={headerRow:1,columns:['tarih:A','getir:B','trendyol:C','migros:D','toplam:E','acikHesap:F'],readRows:0,skippedRows:0,first3:[]};
-  if(!Array.isArray(rows)||!rows.length) return {records,errors:["Sayfa boş veya okunamadı."],info,debug};
-
-  const headerRow=Array.isArray(rows[0])?rows[0]:[];
-  const firstHeader=normalizeHeader(headerRow[0]);
-  if(!firstHeader.includes('günlük ciro')){
-    errors.push('A1 başlığı "Günlük Ciro" olmalı.');
- main
-    return {records,errors,info,debug};
-  }
-
-  for(let i=1;i<rows.length;i++){
+  for(let i=0;i<rows.length;i++){
     const row=Array.isArray(rows[i])?rows[i]:[];
     const rowNo=i+1;
- codex/fix-adisyo-import-for-daily-report-ywrib4
-    const rawDate=row[cols.tarih];
-
     const rawDate=row[0];
- main
     const dateText=cleanAdisyoDateText(rawDate);
     if(!dateText || /^toplam\s*:?\s*$/i.test(dateText) || /^undefined$/i.test(dateText)){
       debug.skippedRows++;
@@ -565,28 +496,37 @@ function extractAdisyoSalesRows(rows){
       continue;
     }
 
- codex/fix-adisyo-import-for-daily-report-ywrib4
-    const yemeksepeti=parseCurrency(row[cols.yemeksepeti]);
-    const getir=parseCurrency(row[cols.getir]);
-    const trendyol=parseCurrency(row[cols.trendyol]);
-    const migros=parseCurrency(row[cols.migros]);
-    const total=parseCurrency(row[cols.toplam]);
-    const acikHesap=cols.acikHesap>-1?parseCurrency(row[cols.acikHesap]):0;
+    const cash=parseCurrency(row[1]);
+    const creditCard=parseCurrency(row[2]);
+    const yemeksepeti=parseCurrency(row[3]);
+    const getir=parseCurrency(row[4]);
+    const trendyol=parseCurrency(row[5]);
+    const migros=parseCurrency(row[6]);
+    const edenred=parseCurrency(row[7]);
+    const total=parseCurrency(row[8]);
+    const acikHesap=parseCurrency(row[9]);
+    const borginfo=parseCurrency(row[10]);
 
-    const rec={date,t1:trendyol,t2:getir,t3:migros,t4:yemeksepeti,t5:0,total,meta:{acikHesap,borcinfo:0}};
+    const rec={
+      date,
+      t1:trendyol,
+      t2:getir,
+      t3:migros,
+      t4:yemeksepeti,
+      t5:cash+creditCard+edenred,
+      total,
+      meta:{acikHesap,borcinfo:borginfo,cash,creditCard,edenred}
+    };
 
-    const getir=parseCurrency(row[1]);
-    const trendyol=parseCurrency(row[2]);
-    const migros=parseCurrency(row[3]);
-    const total=parseCurrency(row[4]);
-    const acikHesap=parseCurrency(row[5]);
-
-    const rec={date,t1:trendyol,t2:getir,t3:migros,t4:0,t5:0,total,meta:{acikHesap,borcinfo:0}};
- main
     records.push(rec);
     debug.readRows++;
     if(debug.first3.length<3) debug.first3.push(rec);
   }
+
+  if(!records.length && !errors.length){
+    errors.push('Adisyo formatında geçerli tarih satırı bulunamadı. A sütununda tarih olduğundan emin olun.');
+  }
+  info.push('Toplam satış (vergi ana toplamı) I sütunundan alındı.');
   return {records,errors,info,debug};
 }
 
@@ -650,7 +590,7 @@ const maxPlatform=Math.max(...platformBars.map(([,v])=>v),0);
 let ds=`<section class="card"><div class="hd"><h2>Günlük Satış</h2></div><div class="bd"><div class="row"><div class="col"><label>Tarih</label><input id="dsDate" type="date"></div><div class="col"><label>Trendyol</label><input id="ds1" type="number"></div><div class="col"><label>Getir</label><input id="ds2" type="number"></div><div class="col"><label>Migros</label><input id="ds3" type="number"></div><div class="col"><label>Yemeksepeti</label><input id="ds4" type="number"></div><div class="col"><label>Elden / dükkân</label><input id="ds5" type="number"></div><div class="col" style="display:flex;align-items:end;gap:8px"><button id="dsAdd">${TAX_EDIT.dailySales===null?'Ekle':'Güncelle'}</button><button id="dsCancel" class="btnghost">İptal</button></div></div><div class="row" style="margin-top:10px"><div class="col"><label>Rapor başlangıç tarihi</label><input id="dsReportStart" type="date" value="${TAX_STATE.settings.reportStart||''}"></div><div class="col"><label>Rapor bitiş tarihi</label><input id="dsReportEnd" type="date" value="${TAX_STATE.settings.reportEnd||''}"></div><div class="col" style="display:flex;align-items:end"><button id="dsReportClear" class="btn2">Dönemi Temizle</button></div></div><div class="mini">Platform özeti ve grafik sadece seçili vergi dönemi kayıtlarından hesaplanır.</div><div class="summaryGrid"><div class="k"><div class="t">Yemeksepeti toplam</div><div class="v">${fmt(platformSummary.yemeksepeti)}</div></div><div class="k"><div class="t">Getir toplam</div><div class="v">${fmt(platformSummary.getir)}</div></div><div class="k"><div class="t">Trendyol toplam</div><div class="v">${fmt(platformSummary.trendyol)}</div></div><div class="k"><div class="t">Migros toplam</div><div class="v">${fmt(platformSummary.migros)}</div></div><div class="k"><div class="t">Elden / Nakit toplam</div><div class="v">${fmt(platformSummary.cash)}</div></div><div class="k"><div class="t">Genel toplam</div><div class="v acc">${fmt(platformSummary.general)}</div></div></div><div class="k"><div class="t">Platformlara göre satış grafiği</div><div class="barList">${platformBars.map(([name,val])=>{const pct=maxPlatform>0?(val/maxPlatform)*100:0;return `<div class="barRow"><div class="barLabel"><span>${name}</span><b>${fmt(val)}</b></div><div class="barTrack"><div class="barFill" style="width:${pct.toFixed(2)}%"></div></div></div>`;}).join('')}</div></div><div class="tableWrap" style="margin-top:12px"><table><thead><tr><th>Tarih</th><th>Trendyol</th><th>Getir</th><th>Migros</th><th>Yemeksepeti</th><th>Elden</th><th>Günlük toplam</th><th></th></tr></thead><tbody>${TAX_STATE.dailySales.map((r,i)=>`<tr><td>${r.date}</td><td>${fmt(r.t1)}</td><td>${fmt(r.t2)}</td><td>${fmt(r.t3)}</td><td>${fmt(r.t4)}</td><td>${fmt(r.t5)}</td><td><b>${fmt(r.total)}</b></td><td><button data-ds-edit='${i}'>Düzenle</button> <button class='btndanger' data-ds='${i}'>Sil</button></td></tr>`).join('')}</tbody></table></div></div></section>`;document.getElementById('page-gunluksatis').innerHTML=ds;
 if(TAX_EDIT.dailySales!==null&&TAX_STATE.dailySales[TAX_EDIT.dailySales]){const r=TAX_STATE.dailySales[TAX_EDIT.dailySales];dsDate.value=r.date;ds1.value=r.t1;ds2.value=r.t2;ds3.value=r.t3;ds4.value=r.t4;ds5.value=r.t5}
 document.getElementById('dsAdd')?.addEventListener('click',()=>{const d=document.getElementById('dsDate').value;if(!d){alert('Tarih zorunlu');return} ;const t1=tv(ds1.value),t2=tv(ds2.value),t3=tv(ds3.value),t4=tv(ds4.value),t5=tv(ds5.value);const rec={date:d,t1,t2,t3,t4,t5,total:t1+t2+t3+t4+t5};if(TAX_EDIT.dailySales===null){TAX_STATE.dailySales.push(rec)}else{TAX_STATE.dailySales[TAX_EDIT.dailySales]=rec;TAX_EDIT.dailySales=null}saveTax();rTax();});document.getElementById('dsReportStart')?.addEventListener('change',e=>{TAX_STATE.settings.reportStart=e.target.value||'';if(TAX_STATE.settings.reportEnd&&TAX_STATE.settings.reportStart&&TAX_STATE.settings.reportStart>TAX_STATE.settings.reportEnd){TAX_STATE.settings.reportEnd=TAX_STATE.settings.reportStart;}saveTax();rTax();});document.getElementById('dsReportEnd')?.addEventListener('change',e=>{TAX_STATE.settings.reportEnd=e.target.value||'';if(TAX_STATE.settings.reportStart&&TAX_STATE.settings.reportEnd&&TAX_STATE.settings.reportStart>TAX_STATE.settings.reportEnd){TAX_STATE.settings.reportStart=TAX_STATE.settings.reportEnd;}saveTax();rTax();});document.getElementById('dsReportClear')?.addEventListener('click',()=>{TAX_STATE.settings.reportStart='';TAX_STATE.settings.reportEnd='';saveTax();rTax();});document.getElementById('dsCancel')?.addEventListener('click',()=>{TAX_EDIT.dailySales=null;rTax();});document.querySelectorAll('[data-ds-edit]').forEach(b=>b.onclick=()=>{TAX_EDIT.dailySales=+b.dataset.dsEdit;rTax();});document.querySelectorAll('[data-ds]').forEach(b=>b.onclick=()=>{if(confirm('Silinsin mi?')){TAX_STATE.dailySales.splice(+b.dataset.ds,1);if(TAX_EDIT.dailySales===+b.dataset.ds)TAX_EDIT.dailySales=null;saveTax();rTax();}});
-document.getElementById('page-veriaktar').innerHTML=`<section class="card"><div class="hd"><h2>Veri Aktar</h2></div><div class="bd"><div class="mini">Adisyo günlük ciro raporunu .xlsx olarak yükleyin. Başlığa göre otomatik eşleşir (sütun sırası değişebilir) platform dağılımı ve toplam satış otomatik ayrıştırılır.</div><div class="row" style="margin-top:10px"><div class="col"><label>Dosya (.xlsx)</label><input id="xlsxFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></div><div class="col" style="display:flex;align-items:end"><button id="xlsxLoad">Excel Yükle</button></div></div><div class="mini" id="importStatus" style="margin-top:10px">Hazır.</div></div></section>`;
+document.getElementById('page-veriaktar').innerHTML=`<section class="card"><div class="hd"><h2>Veri Aktar</h2></div><div class="bd"><div class="mini">Adisyo günlük ciro raporunu .xlsx olarak yükleyin. Adisyo sabit sütun düzeni (A-K) ile otomatik ayrıştırılır. Çok satırlı raporlar desteklenir ve vergi ana toplamı her zaman I sütunundan alınır.</div><div class="row" style="margin-top:10px"><div class="col"><label>Dosya (.xlsx)</label><input id="xlsxFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></div><div class="col" style="display:flex;align-items:end"><button id="xlsxLoad">Excel Yükle</button></div></div><div class="mini" id="importStatus" style="margin-top:10px">Hazır.</div></div></section>`;
 document.getElementById('xlsxLoad')?.addEventListener('click',async()=>{
   const status=document.getElementById('importStatus');
   const btn=document.getElementById('xlsxLoad');
