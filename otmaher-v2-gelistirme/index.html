@@ -487,6 +487,51 @@ function parseCurrency(v){
   const n=parseFloat(t);
   return isFinite(n)?n:0;
 }
+  codex/fix-adisyo-import-for-daily-report-ywrib4
+function normalizeAdisyoHeader(v){
+  return String(v||'')
+    .toLowerCase()
+    .replace(/[₺()]/g,'')
+    .replace(/[çğıöşü]/g,ch=>({ç:'c',ğ:'g',ı:'i',ö:'o',ş:'s',ü:'u'}[ch]||ch))
+    .replace(/\s+/g,' ')
+    .trim();
+}
+function findColumnIndex(headerRow,aliases){
+  const cols=Array.isArray(headerRow)?headerRow:[];
+  const normalizedAliases=(aliases||[]).map(a=>normalizeAdisyoHeader(a));
+  for(let i=0;i<cols.length;i++){
+    const h=normalizeAdisyoHeader(cols[i]);
+    if(normalizedAliases.some(a=>h.includes(a))) return i;
+  }
+  return -1;
+}
+function extractAdisyoSalesRows(rows){
+  const records=[], errors=[], info=[];
+  const debug={headerRow:1,columns:[],readRows:0,skippedRows:0,first3:[]};
+  if(!Array.isArray(rows)||!rows.length) return {records,errors:["Sayfa boş veya okunamadı."],info,debug};
+
+  const headerRow=Array.isArray(rows[0])?rows[0]:[];
+  const firstHeader=normalizeAdisyoHeader(headerRow[0]);
+  if(!firstHeader.includes('gunluk ciro')){
+    errors.push('A1 başlığı "Günlük Ciro" olmalı.');
+    return {records,errors,info,debug};
+  }
+
+  const cols={
+    tarih:0,
+    yemeksepeti:findColumnIndex(headerRow,['ys online','yemeksepeti']),
+    getir:findColumnIndex(headerRow,['getir online','getir']),
+    trendyol:findColumnIndex(headerRow,['trendyol online','trendyol']),
+    migros:findColumnIndex(headerRow,['migros online','migros']),
+    toplam:findColumnIndex(headerRow,['toplam satış','toplam satıs','toplam']),
+    acikHesap:findColumnIndex(headerRow,['açık hesap borçinfo','acik hesap borcinfo','açık hesap','acik hesap','borçinfo','borcinfo'])
+  };
+  const must=['yemeksepeti','getir','trendyol','migros','toplam'];
+  const missing=must.filter(k=>cols[k]===-1);
+  debug.columns=Object.entries(cols).filter(([,idx])=>idx>-1).map(([k,idx])=>`${k}:${idx+1}`);
+  if(missing.length){
+    errors.push(`Eksik başlıklar: ${missing.join(', ')}.`);
+
 function extractAdisyoSalesRows(rows){
   const records=[], errors=[], info=[];
   const debug={headerRow:1,columns:['tarih:A','getir:B','trendyol:C','migros:D','toplam:E','acikHesap:F'],readRows:0,skippedRows:0,first3:[]};
@@ -496,13 +541,18 @@ function extractAdisyoSalesRows(rows){
   const firstHeader=normalizeHeader(headerRow[0]);
   if(!firstHeader.includes('günlük ciro')){
     errors.push('A1 başlığı "Günlük Ciro" olmalı.');
+ main
     return {records,errors,info,debug};
   }
 
   for(let i=1;i<rows.length;i++){
     const row=Array.isArray(rows[i])?rows[i]:[];
     const rowNo=i+1;
+ codex/fix-adisyo-import-for-daily-report-ywrib4
+    const rawDate=row[cols.tarih];
+
     const rawDate=row[0];
+ main
     const dateText=cleanAdisyoDateText(rawDate);
     if(!dateText || /^toplam\s*:?\s*$/i.test(dateText) || /^undefined$/i.test(dateText)){
       debug.skippedRows++;
@@ -515,6 +565,16 @@ function extractAdisyoSalesRows(rows){
       continue;
     }
 
+ codex/fix-adisyo-import-for-daily-report-ywrib4
+    const yemeksepeti=parseCurrency(row[cols.yemeksepeti]);
+    const getir=parseCurrency(row[cols.getir]);
+    const trendyol=parseCurrency(row[cols.trendyol]);
+    const migros=parseCurrency(row[cols.migros]);
+    const total=parseCurrency(row[cols.toplam]);
+    const acikHesap=cols.acikHesap>-1?parseCurrency(row[cols.acikHesap]):0;
+
+    const rec={date,t1:trendyol,t2:getir,t3:migros,t4:yemeksepeti,t5:0,total,meta:{acikHesap,borcinfo:0}};
+
     const getir=parseCurrency(row[1]);
     const trendyol=parseCurrency(row[2]);
     const migros=parseCurrency(row[3]);
@@ -522,6 +582,7 @@ function extractAdisyoSalesRows(rows){
     const acikHesap=parseCurrency(row[5]);
 
     const rec={date,t1:trendyol,t2:getir,t3:migros,t4:0,t5:0,total,meta:{acikHesap,borcinfo:0}};
+ main
     records.push(rec);
     debug.readRows++;
     if(debug.first3.length<3) debug.first3.push(rec);
