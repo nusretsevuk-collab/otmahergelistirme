@@ -432,16 +432,21 @@ function normalizeHeader(v){return String(v||'').toLowerCase().replace(/\s+/g,' 
 function parseExcelDate(value){
   if(value===null||value===undefined||value==='') return null;
   if(typeof value==='number'){
-    const epoch=new Date(Date.UTC(1899,11,30));
-    const d=new Date(epoch.getTime()+Math.round(value)*86400000);
-    return d.toISOString().slice(0,10);
+    const epoch=Date.UTC(1899,11,30);
+    const d=new Date(epoch+Math.round(value)*86400000);
+    return isNaN(d.getTime())?null:d.toISOString().slice(0,10);
+  }
+  if(value instanceof Date){
+    if(isNaN(value.getTime())) return null;
+    return new Date(Date.UTC(value.getFullYear(),value.getMonth(),value.getDate())).toISOString().slice(0,10);
   }
   const txt=String(value).trim();
   const m=txt.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})$/);
   if(m){
+    const mm=+m[1], dd=+m[2];
     let y=+m[3]; if(y<100) y+=2000;
-    const d=new Date(Date.UTC(y,+m[2]-1,+m[1]));
-    if(!isNaN(d)) return d.toISOString().slice(0,10);
+    const d=new Date(Date.UTC(y,mm-1,dd));
+    if(!isNaN(d.getTime()) && d.getUTCFullYear()===y && d.getUTCMonth()===(mm-1) && d.getUTCDate()===dd) return d.toISOString().slice(0,10);
   }
   const d2=new Date(txt);
   if(!isNaN(d2)) return new Date(Date.UTC(d2.getFullYear(),d2.getMonth(),d2.getDate())).toISOString().slice(0,10);
@@ -449,44 +454,71 @@ function parseExcelDate(value){
 }
 function parseCurrency(v){
   if(typeof v==='number') return v;
-  const t=String(v||'').replace(/[^\d,.-]/g,'').replace(/\.(?=\d{3}(\D|$))/g,'').replace(',','.');
-  const n=parseFloat(t);
+  const t=String(v??'').trim();
+  if(!t) return 0;
+  const cleaned=t.replace(/₺/g,'').replace(/\./g,'').replace(/,/g,'.').replace(/[^\d.-]/g,'');
+  if(!cleaned||cleaned==='-'||cleaned==='.') return 0;
+  const normalized=cleaned.indexOf('-')>0?cleaned.replace(/-/g,''):cleaned;
+  const t2=normalized.replace(/(\..*)\./g,'$1');
+  const n=parseFloat(t2);
   return isFinite(n)?n:0;
 }
+function isSkippableAdisyoDateCell(value){
+  if(value===undefined||value===null) return true;
+  const t=String(value).trim();
+  if(!t) return true;
+  return /^toplam\s*:?\s*$/i.test(t);
+}
+function hasAnyAdisyoSalesValue(values){
+  return values.some(v=>{
+    if(typeof v==='number') return Math.abs(v)>0;
+    const t=String(v??'').trim().toLowerCase();
+    if(!t || t==='undefined' || t==='toplam:') return false;
+    return /[\d₺]/.test(t);
+  });
+}
+function parseTotalWithFallback(toplamCell,getir,trendyol,migros){
+  const totalFromE=parseCurrency(toplamCell);
+  const sumFromParts=getir+trendyol+migros;
+  if(Number.isFinite(totalFromE) && totalFromE>0) return {total:totalFromE,usedFallback:false};
+  return {total:sumFromParts,usedFallback:true};
+}
 function extractAdisyoSalesRows(rows){
-  const out=[], errors=[], mismatches=[];
+  const out=[], errors=[], info=[];
   for(let i=1;i<rows.length;i++){
     const row=rows[i]||[];
     const rowNo=i+1;
     const a=row[0],b=row[1],c=row[2],d=row[3],e=row[4];
-    const rowText=[a,b,c,d,e,row[5],row[6]].map(x=>String(x||'').toLowerCase()).join(' ');
-    if(!row.some(v=>String(v??'').trim()!=='')) continue;
-    if(/toplam\s*:/.test(rowText)) continue;
+    if(isSkippableAdisyoDateCell(a)) continue;
     const date=parseExcelDate(a);
-    if(!date){errors.push(`Satır ${rowNo} okunamadı (tarih geçersiz).`);continue;}
-    const getir=parseCurrency(b), trendyol=parseCurrency(c), migros=parseCurrency(d), topFromE=parseCurrency(e);
-    const totalFromParts=getir+trendyol+migros;
-    const total=topFromE>0?topFromE:totalFromParts;
-    if(topFromE>0 && Math.abs(topFromE-totalFromParts)>0.01){
-      mismatches.push(`${date}: E toplamı ${fmt(topFromE)} ≠ B+C+D ${fmt(totalFromParts)}`);
-    }
-    out.push({date,t1:trendyol,t2:getir,t3:migros,t4:0,t5:0,total});
+    if(!date){errors.push(`Satır ${rowNo}: A sütunu tarih olarak okunamadı (${String(a)}).`);continue;}
+    if(!hasAnyAdisyoSalesValue([b,c,d,e])){errors.push(`Satır ${rowNo}: satış sütunlarında geçerli değer bulunamadı.`);continue;}
+    const getir=parseCurrency(b), trendyol=parseCurrency(c), migros=parseCurrency(d);
+    const totalInfo=parseTotalWithFallback(e,getir,trendyol,migros);
+    if(totalInfo.usedFallback) info.push(`Satır ${rowNo} (${date}): E sütunu kullanılamadı, B+C+D kullanıldı.`);
+    out.push({date,t1:trendyol,t2:getir,t3:migros,t4:0,t5:0,total:totalInfo.total});
   }
-  return {records:out,errors,mismatches};
+  return {records:out,errors,info};
+}
+function askDuplicateAction(date){
+  const choice=prompt(`${date} tarihli kayıt zaten var.\n"yaz" = üzerine yaz\n"ekle" = yeni kayıt ekle\n"iptal" = iptal`,`yaz`);
+  const c=(choice||'').toLowerCase().trim();
+  if(c==='yaz') return 'overwrite';
+  if(c==='ekle') return 'append';
+  return 'cancel';
 }
 function mergeImportedSales(imported){
-  let inserted=0,updated=0,added=0,skipped=0;
+  let inserted=0,updated=0,appended=0,skipped=0;
   for(const rec of imported){
     const idx=TAX_STATE.dailySales.findIndex(x=>x.date===rec.date);
     if(idx<0){TAX_STATE.dailySales.push(rec);inserted++;continue;}
-    const choice=prompt(`${rec.date} tarihli kayıt zaten var.\n"yaz" = üzerine yaz\n"ekle" = mevcut kayda ekle\n"iptal" = bu kaydı atla`,`yaz`);
-    const c=(choice||'').toLowerCase().trim();
-    if(c==='yaz'){TAX_STATE.dailySales[idx]=rec;updated++;}
-    else if(c==='ekle'){const cur=TAX_STATE.dailySales[idx];['t1','t2','t3','t4','t5','total'].forEach(k=>cur[k]=(cur[k]||0)+(rec[k]||0));added++;}
-    else{skipped++;}
+    const action=askDuplicateAction(rec.date);
+    if(action==='overwrite'){TAX_STATE.dailySales[idx]=rec;updated++;}
+    else if(action==='append'){TAX_STATE.dailySales.push(rec);appended++;}
+    else skipped++;
   }
   TAX_STATE.dailySales.sort((a,b)=>a.date.localeCompare(b.date));
-  return {inserted,updated,added,skipped,total:inserted+updated+added};
+  return {inserted,updated,appended,skipped,total:inserted+updated+appended};
 }
 
 function rTax(){const c=taxCompute();document.getElementById('page-vergiozeti').innerHTML=`<div class="kpi"><div class="k"><div class="t">Toplam satış KDV dahil</div><div class="v">${fmt(c.salesIncl)}</div></div><div class="k"><div class="t">KDV hariç satış</div><div class="v">${fmt(c.salesEx)}</div></div><div class="k"><div class="t">KDV hariç gider</div><div class="v">${fmt(c.expEx)}</div></div><div class="k"><div class="t">Tahmini gerçek kâr</div><div class="v ${c.realProfit>=0?'acc':'dng'}">${fmt(c.realProfit)}</div></div><div class="k"><div class="t">Tahmini ödenecek KDV</div><div class="v">${fmt(c.payVat)}</div></div><div class="k"><div class="t">Tahmini geçici vergi</div><div class="v">${fmt(c.tempTax)}</div></div><div class="k"><div class="t">Açık borç toplamı</div><div class="v warn">${fmt(c.openDebt)}</div></div></div>`;
@@ -505,7 +537,7 @@ document.getElementById('xlsxLoad')?.addEventListener('click',async()=>{
     if(!f){status.textContent='Lütfen bir .xlsx dosyası seçin.';return;}
     const ab=await f.arrayBuffer();
     const wb=XLSX.read(ab,{type:'array',cellDates:true});
-    const sheetName=(wb.SheetNames.find(n=>String(n).toLowerCase()==='data'))||wb.SheetNames[0];
+    const sheetName=wb.SheetNames[0];
     const ws=wb.Sheets[sheetName];
     const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
     const parsed=extractAdisyoSalesRows(rows);
@@ -515,9 +547,9 @@ document.getElementById('xlsxLoad')?.addEventListener('click',async()=>{
     rTax();
     const notes=[
       `Aktarım tamamlandı. ${result.total} satır aktarıldı/işlendi.`,
-      `(Yeni: ${result.inserted}, Üzerine yaz: ${result.updated}, Ekle: ${result.added}, Atlandı: ${result.skipped})`
+      `(Yeni: ${result.inserted}, Üzerine yaz: ${result.updated}, Yeni kayıt ekle: ${result.appended}, Atlandı: ${result.skipped})`
     ];
-    if(parsed.mismatches.length) notes.push(`Toplam farkı olan satırlar:\n- ${parsed.mismatches.join('\n- ')}`);
+    if(parsed.info.length) notes.push(`Bilgi notları:\n- ${parsed.info.join('\n- ')}`);
     if(parsed.errors.length) notes.push(`Okunamayan satırlar:\n- ${parsed.errors.join('\n- ')}`);
     const msg=notes.join('\n');
     status.textContent=msg.replace(/\n/g,' ');
