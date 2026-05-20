@@ -455,7 +455,7 @@ function parseExcelDate(value){
   if(!txt || /^toplam\s*:?\s*$/i.test(txt)) return null;
   const m=txt.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})$/);
   if(m){
-    const mm=+m[1], dd=+m[2];
+    const dd=+m[1], mm=+m[2];
     let y=+m[3]; if(y<100) y+=2000;
     const d=new Date(Date.UTC(y,mm-1,dd));
     if(!isNaN(d.getTime()) && d.getUTCFullYear()===y && d.getUTCMonth()===(mm-1) && d.getUTCDate()===dd) return d.toISOString().slice(0,10);
@@ -645,7 +645,17 @@ document.getElementById('xlsxLoad')?.addEventListener('click',async()=>{
     const ws=wb.Sheets[sheetName];
     const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
     const parsed=extractAdisyoSalesRows(rows);
-    if(!parsed.records.length){status.textContent='Aktarılabilir veri satırı bulunamadı. Lütfen Adisyo rapor düzenini kontrol edin.';if(parsed.debug){status.textContent+=` | Başlık satırı: ${parsed.debug.headerRow>0?parsed.debug.headerRow:'yok'} | Okunan: ${parsed.debug.readRows} | Atlanan: ${parsed.debug.skippedRows}`;}return;}
+    const previewParts=parsed.debug?[
+      `Başlık satırı: ${parsed.debug.headerRow>0?parsed.debug.headerRow:'bulunamadı'}`,
+      `Sütunlar: ${parsed.debug.columns.length?parsed.debug.columns.join(', '):'-'}`,
+      `Okunan: ${parsed.debug.readRows}`,
+      `Atlanan: ${parsed.debug.skippedRows}`,
+      `İlk 3 kayıt: ${parsed.debug.first3.length?JSON.stringify(parsed.debug.first3):'[]'}`
+    ]:[];
+    if(!parsed.records.length){
+      status.textContent='Aktarılabilir veri satırı bulunamadı. Lütfen Adisyo rapor düzenini kontrol edin.'+(previewParts.length?` | ${previewParts.join(' | ')}`:'');
+      return;
+    }
     const result=mergeImportedSales(parsed.records);
     saveTax();
     rTax();
