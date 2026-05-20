@@ -487,52 +487,22 @@ function parseCurrency(v){
   const n=parseFloat(t);
   return isFinite(n)?n:0;
 }
-function normalizeAdisyoHeader(v){
-  return String(v||'').toLowerCase().replace(/[₺()]/g,'').replace(/\s+/g,' ').trim();
-}
-function buildAdisyoHeaderMap(headerRow){
-  const map={};
-  const aliases={
-    tarih:['günlük ciro'],
-    nakit:['nakit','nakit₺'],
-    krediKarti:['kredi kartı','kredi karti'],
-    yemeksepeti:['ys online'],
-    getir:['getir online'],
-    trendyol:['trendyol o','trendyol'],
-    migros:['migros on','migros online'],
-    edenred:['edenred o','edenred'],
-    toplam:['toplam ₺','toplam'],
-    acikHesap:['açık hesap','acik hesap'],
-    borcinfo:['borcinfo','borginfo']
-  };
-  Object.entries(aliases).forEach(([key,names])=>{
-    map[key]=-1;
-    for(let i=0;i<headerRow.length;i++){
-      const h=normalizeAdisyoHeader(headerRow[i]);
-      if(names.includes(h)){map[key]=i;break;}
-    }
-  });
-  return map;
-}
 function extractAdisyoSalesRows(rows){
   const records=[], errors=[], info=[];
-  const debug={headerRow:-1,columns:[],readRows:0,skippedRows:0,first3:[]};
-  const headerIdx=rows.findIndex(r=>Array.isArray(r)&&r.some(c=>normalizeAdisyoHeader(c).includes('günlük ciro')));
-  debug.headerRow=headerIdx>-1?headerIdx+1:-1;
-  if(headerIdx<0) return {records,errors:["Başlık satırı bulunamadı (Günlük Ciro)."],info,debug};
-  const headerMap=buildAdisyoHeaderMap(rows[headerIdx]);
-  const required=['tarih','nakit','krediKarti','yemeksepeti','getir','trendyol','migros','edenred','toplam'];
-  const missing=required.filter(k=>headerMap[k]===-1);
-  debug.columns=Object.entries(headerMap).filter(([,idx])=>idx>-1).map(([k,idx])=>`${k}:${idx+1}`);
-  if(missing.length){
-    errors.push(`Eksik başlıklar: ${missing.join(', ')}.`);
+  const debug={headerRow:1,columns:['tarih:A','getir:B','trendyol:C','migros:D','toplam:E','acikHesap:F'],readRows:0,skippedRows:0,first3:[]};
+  if(!Array.isArray(rows)||!rows.length) return {records,errors:["Sayfa boş veya okunamadı."],info,debug};
+
+  const headerRow=Array.isArray(rows[0])?rows[0]:[];
+  const firstHeader=normalizeHeader(headerRow[0]);
+  if(!firstHeader.includes('günlük ciro')){
+    errors.push('A1 başlığı "Günlük Ciro" olmalı.');
     return {records,errors,info,debug};
   }
 
-  for(let i=headerIdx+1;i<rows.length;i++){
+  for(let i=1;i<rows.length;i++){
     const row=Array.isArray(rows[i])?rows[i]:[];
     const rowNo=i+1;
-    const rawDate=row[headerMap.tarih];
+    const rawDate=row[0];
     const dateText=cleanAdisyoDateText(rawDate);
     if(!dateText || /^toplam\s*:?\s*$/i.test(dateText) || /^undefined$/i.test(dateText)){
       debug.skippedRows++;
@@ -540,35 +510,25 @@ function extractAdisyoSalesRows(rows){
     }
     const date=parseExcelDate(rawDate);
     if(!date){
+      errors.push(`Satır ${rowNo}: tarih okunamadı (${String(rawDate||'boş')}).`);
       debug.skippedRows++;
       continue;
     }
 
-    const cash=parseCurrency(row[headerMap.nakit]);
-    const card=parseCurrency(row[headerMap.krediKarti]);
-    const yemeksepeti=parseCurrency(row[headerMap.yemeksepeti]);
-    const getir=parseCurrency(row[headerMap.getir]);
-    const trendyol=parseCurrency(row[headerMap.trendyol]);
-    const migros=parseCurrency(row[headerMap.migros]);
-    const edenred=parseCurrency(row[headerMap.edenred]);
-    const total=parseCurrency(row[headerMap.toplam]);
-    const acikHesap=headerMap.acikHesap>-1?parseCurrency(row[headerMap.acikHesap]):0;
-    const borcinfo=headerMap.borcinfo>-1?parseCurrency(row[headerMap.borcinfo]):0;
+    const getir=parseCurrency(row[1]);
+    const trendyol=parseCurrency(row[2]);
+    const migros=parseCurrency(row[3]);
+    const total=parseCurrency(row[4]);
+    const acikHesap=parseCurrency(row[5]);
 
-    const rawTotalCell=String(row[headerMap.toplam]??'').trim();
-    if(!rawTotalCell){
-      errors.push(`Satır ${rowNo} (${date}): Toplam sütunu boş.`);
-      debug.skippedRows++;
-      continue;
-    }
-
-    const rec={date,t1:trendyol,t2:getir,t3:migros,t4:yemeksepeti,t5:cash+card+edenred,total,meta:{acikHesap,borcinfo}};
+    const rec={date,t1:trendyol,t2:getir,t3:migros,t4:0,t5:0,total,meta:{acikHesap,borcinfo:0}};
     records.push(rec);
     debug.readRows++;
     if(debug.first3.length<3) debug.first3.push(rec);
   }
   return {records,errors,info,debug};
 }
+
 function askDuplicateAction(date){
   const choice=prompt(`${date} tarihli kayıt zaten var.\n"yaz" = üzerine yaz\n"ekle" = yeni kayıt ekle\n"iptal" = iptal`,`yaz`);
   const c=(choice||'').toLowerCase().trim();
