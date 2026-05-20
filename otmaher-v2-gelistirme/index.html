@@ -477,8 +477,10 @@ function parseCurrency(v){
 }
 function extractAdisyoSalesRows(rows){
   const records=[], errors=[], info=[];
-  const debug={sheet:'İlk sayfa',columns:['A:tarih','B:nakit','C:kredi kartı','D:ys online','E:getir online','F:trendyol','G:migros on','H:edenred','I:toplam','J:açık hesap','K:borginfo'],readRows:0,skippedRows:0,first3:[]};
+  const debug={sheet:'İlk sayfa',columns:['A:tarih','B:getir veya nakit','C:trendyol veya kredi kartı','D:migros veya ys online','E:getir online','F:trendyol','G:migros on','H:edenred','I:toplam','J:açık hesap','K:borginfo'],readRows:0,skippedRows:0,first3:[],mode:'unknown'};
   if(!Array.isArray(rows)||!rows.length) return {records,errors:["Sayfa boş veya okunamadı."],info,debug};
+
+  const hasCellValue=v=>!(v===null||v===undefined||String(v).trim()==='');
 
   for(let i=0;i<rows.length;i++){
     const row=Array.isArray(rows[i])?rows[i]:[];
@@ -496,16 +498,30 @@ function extractAdisyoSalesRows(rows){
       continue;
     }
 
-    const cash=parseCurrency(row[1]);
-    const creditCard=parseCurrency(row[2]);
-    const yemeksepeti=parseCurrency(row[3]);
-    const getir=parseCurrency(row[4]);
-    const trendyol=parseCurrency(row[5]);
-    const migros=parseCurrency(row[6]);
-    const edenred=parseCurrency(row[7]);
     const total=parseCurrency(row[8]);
     const acikHesap=parseCurrency(row[9]);
     const borginfo=parseCurrency(row[10]);
+
+    let getir=0,trendyol=0,migros=0,yemeksepeti=0,cash=0,creditCard=0,edenred=0;
+
+    const isLegacyLayout=hasCellValue(row[4])||hasCellValue(row[5])||hasCellValue(row[6])||hasCellValue(row[7]);
+    if(isLegacyLayout){
+      if(debug.mode==='unknown') debug.mode='legacy-ak';
+      cash=parseCurrency(row[1]);
+      creditCard=parseCurrency(row[2]);
+      yemeksepeti=parseCurrency(row[3]);
+      getir=parseCurrency(row[4]);
+      trendyol=parseCurrency(row[5]);
+      migros=parseCurrency(row[6]);
+      edenred=parseCurrency(row[7]);
+    }else{
+      if(debug.mode==='unknown') debug.mode='platform-20gun';
+      getir=parseCurrency(row[1]);
+      trendyol=parseCurrency(row[2]);
+      migros=parseCurrency(row[3]);
+      yemeksepeti=0;
+      cash=Math.max(0,total-(getir+trendyol+migros));
+    }
 
     const rec={
       date,
@@ -515,7 +531,7 @@ function extractAdisyoSalesRows(rows){
       t4:yemeksepeti,
       t5:cash+creditCard+edenred,
       total,
-      meta:{acikHesap,borcinfo:borginfo,cash,creditCard,edenred}
+      meta:{acikHesap,borcinfo:borginfo,cash,creditCard,edenred,layout:isLegacyLayout?'legacy-ak':'platform-20gun'}
     };
 
     records.push(rec);
