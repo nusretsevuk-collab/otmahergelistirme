@@ -189,9 +189,6 @@ tr:hover td{background:rgba(255,255,255,.02)}
 <section id="page-borctakibi" class="page"></section>
 <section id="page-vergiayarlari" class="page"></section>
 <section id="page-veriaktar" class="page"></section>
-<section id="page-gunluktakip" class="page"></section>
-<section id="page-vergigider" class="page"></section>
-<section id="page-raporlar" class="page"></section>
 
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script>
@@ -431,7 +428,7 @@ setPill("Durum: hazır ✅","ok");
 const TAX_KEY="otmaher_vergi_v1";
 const TAX_DEFAULT={settings:{salesVat:10,tempTaxRate:25,reportStart:'',reportEnd:''},dailySales:[],expenses:[],debts:[]};
 let TAX_STATE=structuredClone(TAX_DEFAULT);
-const TAX_TABS=[['Maliyet Uygulaması','maliyet'],['Vergi Özeti','vergiozeti'],['Günlük Satış','gunluksatis'],['Veri Aktar','veriaktar'],['Gider Faturaları','giderfaturalar'],['Vergi Merkezi','vergimerkezi'],['Borç Takibi','borctakibi'],['Vergi Ayarları','vergiayarlari'],['Günlük Takip','gunluktakip'],['Vergi & Gider','vergigider'],['Raporlar','raporlar']];
+const TAX_TABS=[['Maliyet Uygulaması','maliyet'],['Vergi Özeti','vergiozeti'],['Günlük Satış','gunluksatis'],['Veri Aktar','veriaktar'],['Gider Faturaları','giderfaturalar'],['Vergi Merkezi','vergimerkezi'],['Borç Takibi','borctakibi'],['Vergi Ayarları','vergiayarlari']];
 function tv(v){const x=parseFloat(v);return isFinite(x)?x:0}
 function initTabs(){const root=document.getElementById('topTabs');root.innerHTML=TAX_TABS.map(t=>`<button class="tabbtn" data-tab="${t[1]}">${t[0]}</button>`).join('');root.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>openTab(b.dataset.tab)));openTab('maliyet');}
 function openTab(name){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));const pg=document.getElementById('page-'+name);if(pg)pg.classList.add('active');document.querySelectorAll('.tabbtn').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));}
@@ -665,34 +662,10 @@ document.getElementById('exAdd')?.addEventListener('click',()=>{const date=exDat
 document.getElementById('page-vergimerkezi').innerHTML=`<div class='kpi'><div class='k'><div class='t'>Çıkan KDV</div><div class='v'>${fmt(c.outVat)}</div></div><div class='k'><div class='t'>İndirilecek KDV</div><div class='v'>${fmt(c.inVat)}</div></div><div class='k'><div class='t'>Tahmini ödenecek KDV</div><div class='v ${c.payVat>=0?'warn':'acc'}'>${fmt(c.payVat)}</div></div><div class='k'><div class='t'>KDV hariç satış</div><div class='v'>${fmt(c.salesEx)}</div></div><div class='k'><div class='t'>KDV hariç gider</div><div class='v'>${fmt(c.expEx)}</div></div><div class='k'><div class='t'>Vergiye esas kazanç</div><div class='v'>${fmt(c.income)}</div></div><div class='k'><div class='t'>Geçici vergi oranı</div><div class='v'>%${(c.tempRate*100).toFixed(2)}</div></div><div class='k'><div class='t'>Tahmini geçici vergi</div><div class='v'>${fmt(c.tempTax)}</div></div></div>`;
 let db=`<section class='card'><div class='hd'><h2>Borç Takibi</h2></div><div class='bd'><div class='row'><div class='col'><label>Vade</label><input id='dbDue' type='date'></div><div class='col'><label>Açıklama</label><input id='dbDesc'></div><div class='col'><label>Tutar</label><input id='dbAmount' type='number'></div><div class='col'><label>Durum</label><select id='dbStatus'><option>Bekliyor</option><option>Ödendi</option><option>Gecikti</option></select></div><div class='col' style='display:flex;align-items:end;gap:8px'><button id='dbAdd'>${TAX_EDIT.debts===null?'Ekle':'Güncelle'}</button><button id='dbCancel' class='btnghost'>İptal</button></div></div><div class='tableWrap'><table><thead><tr><th>Vade</th><th>Açıklama</th><th>Tutar</th><th>Durum</th><th></th></tr></thead><tbody>${TAX_STATE.debts.map((d,i)=>`<tr><td>${d.due}</td><td>${d.desc}</td><td>${fmt(d.amount)}</td><td>${d.status}</td><td><button data-db-edit='${i}'>Düzenle</button> <button class='btndanger' data-db='${i}'>Sil</button></td></tr>`).join('')}</tbody></table></div></div></section>`;document.getElementById('page-borctakibi').innerHTML=db;
 if(TAX_EDIT.debts!==null&&TAX_STATE.debts[TAX_EDIT.debts]){const d=TAX_STATE.debts[TAX_EDIT.debts];dbDue.value=d.due;dbDesc.value=d.desc;dbAmount.value=d.amount;dbStatus.value=d.status}
-document.getElementById('dbAdd')?.addEventListener('click',()=>{if(!dbDue.value||!dbDesc.value.trim()){alert('Vade ve açıklama zorunlu');return}const rec={due:dbDue.value,desc:dbDesc.value.trim(),amount:tv(dbAmount.value),status:dbStatus.value};if(TAX_EDIT.debts===null){TAX_STATE.debts.push(rec)}else{TAX_STATE.debts[TAX_EDIT.debts]=rec;TAX_EDIT.debts=null}saveTax();rTax();});document.getElementById('dbCancel')?.addEventListener('click',()=>{TAX_EDIT.debts=null;rTax();});document.querySelectorAll('[data-db-edit]').forEach(b=>b.onclick=()=>{TAX_EDIT.debts=+b.dataset.dbEdit;rTax();});document.querySelectorAll('[data-db]').forEach(b=>b.onclick=()=>{if(confirm('Silinsin mi?')){TAX_STATE.debts.splice(+b.dataset.db,1);if(TAX_EDIT.debts===+b.dataset.db)TAX_EDIT.debts=null;saveTax();rTax();}});renderAddonModules();}
-
-function renderAddonModules(){
-  const c=taxCompute();
-  const sales=TAX_STATE.dailySales;
-  const expenses=TAX_STATE.expenses;
-  const debts=TAX_STATE.debts;
-  const latestSale=sales.length?[...sales].sort((a,b)=>b.date.localeCompare(a.date))[0]:null;
-  const latestExpense=expenses.length?[...expenses].sort((a,b)=>b.date.localeCompare(a.date))[0]:null;
-
-  document.getElementById('page-gunluktakip').innerHTML=`<main><section class="card"><div class="hd"><h2>Günlük Takip Modülü</h2><span class="pill">Bağımsız modül</span></div><div class="bd"><div class="kpi"><div class="k"><div class="t">Toplam günlük kayıt</div><div class="v">${sales.length}</div></div><div class="k"><div class="t">Son satış tarihi</div><div class="v">${latestSale?latestSale.date:'-'}</div></div><div class="k"><div class="t">Son gün toplamı</div><div class="v">${latestSale?fmt(latestSale.total):'-'}</div></div><div class="k"><div class="t">Açık borç adedi</div><div class="v warn">${debts.filter(d=>d.status!=='Ödendi').length}</div></div></div><div class="mini" style="margin-top:10px">Bu modül mevcut satış, borç ve kayıt verilerini takip amaçlı özetler; maliyet hesap alanlarına dokunmaz.</div></div></section></main>`;
-
-  const expByType={};
-  expenses.forEach(e=>{expByType[e.type]=(expByType[e.type]||0)+tv(e.kdvDahil);});
-  const expRows=Object.entries(expByType).sort((a,b)=>b[1]-a[1]);
-  document.getElementById('page-vergigider').innerHTML=`<main><section class="card"><div class="hd"><h2>Vergi & Gider Modülü</h2><span class="pill">Bağımsız modül</span></div><div class="bd"><div class="kpi"><div class="k"><div class="t">Tahmini ödenecek KDV</div><div class="v ${c.payVat>=0?'warn':'acc'}">${fmt(c.payVat)}</div></div><div class="k"><div class="t">Tahmini geçici vergi</div><div class="v">${fmt(c.tempTax)}</div></div><div class="k"><div class="t">Toplam gider (KDV dahil)</div><div class="v">${fmt(expenses.reduce((a,e)=>a+tv(e.kdvDahil),0))}</div></div><div class="k"><div class="t">Açık borç toplamı</div><div class="v dng">${fmt(c.openDebt)}</div></div></div><div class="tableWrap" style="margin-top:12px"><table><thead><tr><th>Gider tipi</th><th>Toplam</th></tr></thead><tbody>${expRows.length?expRows.map(([t,val])=>`<tr><td>${t}</td><td><b>${fmt(val)}</b></td></tr>`).join(''):'<tr><td colspan="2" class="muted">Kayıt bulunamadı.</td></tr>'}</tbody></table></div></div></section></main>`;
-
-  const selected=getSelectedDailySales();
-  const totalSales=selected.reduce((a,r)=>a+tv(r.total),0);
-  const totalExp=expenses.reduce((a,e)=>a+tv(e.kdvDahil),0);
-  const netBalance=totalSales-totalExp-c.openDebt;
-  document.getElementById('page-raporlar').innerHTML=`<main><section class="card"><div class="hd"><h2>Raporlar</h2><span class="pill">Bağımsız modül</span></div><div class="bd"><div class="kpi"><div class="k"><div class="t">Dönem satış toplamı</div><div class="v acc">${fmt(totalSales)}</div></div><div class="k"><div class="t">Toplam gider</div><div class="v">${fmt(totalExp)}</div></div><div class="k"><div class="t">Açık borç etkisi</div><div class="v warn">-${fmt(c.openDebt)}</div></div><div class="k"><div class="t">Basit net bakiye</div><div class="v ${netBalance>=0?'acc':'dng'}">${fmt(netBalance)}</div></div></div><div class="mini" style="margin-top:10px">Rapor dönemi, Günlük Satış sekmesindeki başlangıç/bitiş tarihine göre filtrelenir.</div></div></section></main>`;
-}
-
+document.getElementById('dbAdd')?.addEventListener('click',()=>{if(!dbDue.value||!dbDesc.value.trim()){alert('Vade ve açıklama zorunlu');return}const rec={due:dbDue.value,desc:dbDesc.value.trim(),amount:tv(dbAmount.value),status:dbStatus.value};if(TAX_EDIT.debts===null){TAX_STATE.debts.push(rec)}else{TAX_STATE.debts[TAX_EDIT.debts]=rec;TAX_EDIT.debts=null}saveTax();rTax();});document.getElementById('dbCancel')?.addEventListener('click',()=>{TAX_EDIT.debts=null;rTax();});document.querySelectorAll('[data-db-edit]').forEach(b=>b.onclick=()=>{TAX_EDIT.debts=+b.dataset.dbEdit;rTax();});document.querySelectorAll('[data-db]').forEach(b=>b.onclick=()=>{if(confirm('Silinsin mi?')){TAX_STATE.debts.splice(+b.dataset.db,1);if(TAX_EDIT.debts===+b.dataset.db)TAX_EDIT.debts=null;saveTax();rTax();}});}
 loadTax();
 initTabs();
 rTax();
-renderAddonModules();
 
 </script>
 </body>
