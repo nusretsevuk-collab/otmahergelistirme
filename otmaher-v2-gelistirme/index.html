@@ -67,6 +67,8 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .barLabel{font-size:12px;color:var(--text);display:flex;justify-content:space-between;gap:8px}
 .barTrack{height:12px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
 .barFill{height:100%;border-radius:999px;background:linear-gradient(90deg,rgba(52,211,153,.95),rgba(16,185,129,.65))}
+.taxModGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:980px){.taxModGrid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -189,6 +191,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 <section id="page-borctakibi" class="page"></section>
 <section id="page-vergiayarlari" class="page"></section>
 <section id="page-veriaktar" class="page"></section>
+<section id="page-vergigidermodulu" class="page"></section>
 
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script>
@@ -428,7 +431,10 @@ setPill("Durum: hazır ✅","ok");
 const TAX_KEY="otmaher_vergi_v1";
 const TAX_DEFAULT={settings:{salesVat:10,tempTaxRate:25,reportStart:'',reportEnd:''},dailySales:[],expenses:[],debts:[]};
 let TAX_STATE=structuredClone(TAX_DEFAULT);
-const TAX_TABS=[['Maliyet Uygulaması','maliyet'],['Vergi Özeti','vergiozeti'],['Günlük Satış','gunluksatis'],['Veri Aktar','veriaktar'],['Gider Faturaları','giderfaturalar'],['Vergi Merkezi','vergimerkezi'],['Borç Takibi','borctakibi'],['Vergi Ayarları','vergiayarlari']];
+const TAXMOD_KEY="otmaher_vergi_gider_modul_v1";
+const TAXMOD_DEFAULT={vatRate:20,tempTaxRate:25,selectedMonth:'',dailySales:[],dailyExpenses:[]};
+let TAXMOD_STATE=structuredClone(TAXMOD_DEFAULT);
+const TAX_TABS=[['Maliyet Uygulaması','maliyet'],['Vergi & Gider Modülü','vergigidermodulu'],['Vergi Özeti','vergiozeti'],['Günlük Satış','gunluksatis'],['Veri Aktar','veriaktar'],['Gider Faturaları','giderfaturalar'],['Vergi Merkezi','vergimerkezi'],['Borç Takibi','borctakibi'],['Vergi Ayarları','vergiayarlari']];
 function tv(v){const x=parseFloat(v);return isFinite(x)?x:0}
 function initTabs(){const root=document.getElementById('topTabs');root.innerHTML=TAX_TABS.map(t=>`<button class="tabbtn" data-tab="${t[1]}">${t[0]}</button>`).join('');root.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>openTab(b.dataset.tab)));openTab('maliyet');}
 function openTab(name){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));const pg=document.getElementById('page-'+name);if(pg)pg.classList.add('active');document.querySelectorAll('.tabbtn').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));}
@@ -588,6 +594,29 @@ function getDailySalesPlatformSummary(records=getSelectedDailySales()){
   s.general=s.yemeksepeti+s.getir+s.trendyol+s.migros+s.cash;
   return s;
 }
+function saveTaxMod(){localStorage.setItem(TAXMOD_KEY,JSON.stringify(TAXMOD_STATE));}
+function loadTaxMod(){try{const r=localStorage.getItem(TAXMOD_KEY);if(r){const p=JSON.parse(r);TAXMOD_STATE.vatRate=tv(p.vatRate??TAXMOD_DEFAULT.vatRate);TAXMOD_STATE.tempTaxRate=tv(p.tempTaxRate??TAXMOD_DEFAULT.tempTaxRate);TAXMOD_STATE.selectedMonth=String(p.selectedMonth||'');TAXMOD_STATE.dailySales=Array.isArray(p.dailySales)?p.dailySales:[];TAXMOD_STATE.dailyExpenses=Array.isArray(p.dailyExpenses)?p.dailyExpenses:[];}}catch(e){console.error(e);}}
+function monthKey(dateStr){return String(dateStr||'').slice(0,7);}
+function renderTaxGiderModule(){
+  const salesMonth={}; TAXMOD_STATE.dailySales.forEach(r=>{const m=monthKey(r.date); salesMonth[m]=(salesMonth[m]||0)+tv(r.amount);});
+  const expMonth={}; TAXMOD_STATE.dailyExpenses.forEach(r=>{const m=monthKey(r.date); expMonth[m]=(expMonth[m]||0)+tv(r.amount);});
+  const months=[...new Set([...Object.keys(salesMonth),...Object.keys(expMonth)])].sort();
+  const currentMonth=(months.includes(TAXMOD_STATE.selectedMonth)?TAXMOD_STATE.selectedMonth:(months[months.length-1]||new Date().toISOString().slice(0,7));
+  const monthlySales=salesMonth[currentMonth]||0;
+  const monthlyExpense=expMonth[currentMonth]||0;
+  const kdv=monthlySales*(tv(TAXMOD_STATE.vatRate)/100);
+  const estNet=Math.max(0,monthlySales-monthlyExpense-kdv);
+  const tempTax=estNet*(tv(TAXMOD_STATE.tempTaxRate)/100);
+  const netProfit=estNet-tempTax;
+  document.getElementById('page-vergigidermodulu').innerHTML=`<section class="card"><div class="hd"><h2>Vergi & Gider Modülü</h2><span class="pill">Bağımsız çalışma alanı</span></div><div class="bd"><div class="taxModGrid"><section class="card"><div class="hd"><h2>Günlük Satış Girişi</h2></div><div class="bd"><div class="row"><div class="col"><label>Tarih</label><input id="tmSaleDate" type="date"></div><div class="col"><label>Tutar (TL)</label><input id="tmSaleAmount" type="number" step="0.01"></div><div class="col" style="display:flex;align-items:end"><button id="tmSaleAdd">Satış Ekle</button></div></div></div></section><section class="card"><div class="hd"><h2>Günlük Gider Girişi</h2></div><div class="bd"><div class="row"><div class="col"><label>Tarih</label><input id="tmExpDate" type="date"></div><div class="col"><label>Tutar (TL)</label><input id="tmExpAmount" type="number" step="0.01"></div><div class="col" style="display:flex;align-items:end"><button id="tmExpAdd">Gider Ekle</button></div></div></div></section></div><div class="row" style="margin-top:12px"><div class="col"><label>KDV hesap oranı %</label><input id="tmVatRate" type="number" value="${TAXMOD_STATE.vatRate}"></div><div class="col"><label>Geçici vergi oranı %</label><input id="tmTempRate" type="number" value="${TAXMOD_STATE.tempTaxRate}"></div><div class="col"><label>Özet ayı</label><select id="tmMonthSel">${months.length?months.map(m=>`<option value="${m}" ${m===currentMonth?'selected':''}>${m}</option>`).join(''):`<option value="${currentMonth}">${currentMonth}</option>`}</select></div></div><div class="summaryGrid"><div class="k"><div class="t">Aylık toplam satış</div><div class="v acc">${fmt(monthlySales)}</div></div><div class="k"><div class="t">Aylık toplam gider</div><div class="v warn">${fmt(monthlyExpense)}</div></div><div class="k"><div class="t">KDV hesap alanı</div><div class="v">${fmt(kdv)}</div></div><div class="k"><div class="t">Geçici vergi için tahmini net kazanç</div><div class="v">${fmt(estNet)}</div></div><div class="k"><div class="t">Aylık net kâr özeti</div><div class="v ${netProfit>=0?'acc':'dng'}">${fmt(netProfit)}</div></div><div class="k"><div class="t">Tahmini geçici vergi</div><div class="v">${fmt(tempTax)}</div></div></div><div class="taxModGrid"><div class="tableWrap"><table><thead><tr><th colspan="3">Satış Kayıtları</th></tr><tr><th>Tarih</th><th>Tutar</th><th></th></tr></thead><tbody>${TAXMOD_STATE.dailySales.map((r,i)=>`<tr><td>${r.date}</td><td>${fmt(r.amount)}</td><td><button class='btndanger' data-tm-sale-del='${i}'>Sil</button></td></tr>`).join('')}</tbody></table></div><div class="tableWrap"><table><thead><tr><th colspan="3">Gider Kayıtları</th></tr><tr><th>Tarih</th><th>Tutar</th><th></th></tr></thead><tbody>${TAXMOD_STATE.dailyExpenses.map((r,i)=>`<tr><td>${r.date}</td><td>${fmt(r.amount)}</td><td><button class='btndanger' data-tm-exp-del='${i}'>Sil</button></td></tr>`).join('')}</tbody></table></div></div></div></section>`;
+  document.getElementById('tmSaleAdd')?.addEventListener('click',()=>{const d=tmSaleDate.value,a=tv(tmSaleAmount.value);if(!d||a<=0){alert('Geçerli satış tarihi ve tutarı girin');return;}TAXMOD_STATE.dailySales.push({date:d,amount:a});saveTaxMod();renderTaxGiderModule();});
+  document.getElementById('tmExpAdd')?.addEventListener('click',()=>{const d=tmExpDate.value,a=tv(tmExpAmount.value);if(!d||a<=0){alert('Geçerli gider tarihi ve tutarı girin');return;}TAXMOD_STATE.dailyExpenses.push({date:d,amount:a});saveTaxMod();renderTaxGiderModule();});
+  document.getElementById('tmVatRate')?.addEventListener('input',e=>{TAXMOD_STATE.vatRate=tv(e.target.value);saveTaxMod();renderTaxGiderModule();});
+  document.getElementById('tmTempRate')?.addEventListener('input',e=>{TAXMOD_STATE.tempTaxRate=tv(e.target.value);saveTaxMod();renderTaxGiderModule();});
+  document.getElementById('tmMonthSel')?.addEventListener('change',e=>{TAXMOD_STATE.selectedMonth=e.target.value;saveTaxMod();renderTaxGiderModule();});
+  document.querySelectorAll('[data-tm-sale-del]').forEach(b=>b.onclick=()=>{TAXMOD_STATE.dailySales.splice(+b.dataset.tmSaleDel,1);saveTaxMod();renderTaxGiderModule();});
+  document.querySelectorAll('[data-tm-exp-del]').forEach(b=>b.onclick=()=>{TAXMOD_STATE.dailyExpenses.splice(+b.dataset.tmExpDel,1);saveTaxMod();renderTaxGiderModule();});
+}
 
 function rTax(){const c=taxCompute();document.getElementById('page-vergiozeti').innerHTML=`<div class="kpi"><div class="k"><div class="t">Toplam satış KDV dahil</div><div class="v">${fmt(c.salesIncl)}</div></div><div class="k"><div class="t">KDV hariç satış</div><div class="v">${fmt(c.salesEx)}</div></div><div class="k"><div class="t">KDV hariç gider</div><div class="v">${fmt(c.expEx)}</div></div><div class="k"><div class="t">Tahmini gerçek kâr</div><div class="v ${c.realProfit>=0?'acc':'dng'}">${fmt(c.realProfit)}</div></div><div class="k"><div class="t">Tahmini ödenecek KDV</div><div class="v">${fmt(c.payVat)}</div></div><div class="k"><div class="t">Tahmini geçici vergi</div><div class="v">${fmt(c.tempTax)}</div></div><div class="k"><div class="t">Açık borç toplamı</div><div class="v warn">${fmt(c.openDebt)}</div></div></div>`;
 // forms minimal
@@ -664,8 +693,10 @@ let db=`<section class='card'><div class='hd'><h2>Borç Takibi</h2></div><div cl
 if(TAX_EDIT.debts!==null&&TAX_STATE.debts[TAX_EDIT.debts]){const d=TAX_STATE.debts[TAX_EDIT.debts];dbDue.value=d.due;dbDesc.value=d.desc;dbAmount.value=d.amount;dbStatus.value=d.status}
 document.getElementById('dbAdd')?.addEventListener('click',()=>{if(!dbDue.value||!dbDesc.value.trim()){alert('Vade ve açıklama zorunlu');return}const rec={due:dbDue.value,desc:dbDesc.value.trim(),amount:tv(dbAmount.value),status:dbStatus.value};if(TAX_EDIT.debts===null){TAX_STATE.debts.push(rec)}else{TAX_STATE.debts[TAX_EDIT.debts]=rec;TAX_EDIT.debts=null}saveTax();rTax();});document.getElementById('dbCancel')?.addEventListener('click',()=>{TAX_EDIT.debts=null;rTax();});document.querySelectorAll('[data-db-edit]').forEach(b=>b.onclick=()=>{TAX_EDIT.debts=+b.dataset.dbEdit;rTax();});document.querySelectorAll('[data-db]').forEach(b=>b.onclick=()=>{if(confirm('Silinsin mi?')){TAX_STATE.debts.splice(+b.dataset.db,1);if(TAX_EDIT.debts===+b.dataset.db)TAX_EDIT.debts=null;saveTax();rTax();}});}
 loadTax();
+loadTaxMod();
 initTabs();
 rTax();
+renderTaxGiderModule();
 
 </script>
 </body>
