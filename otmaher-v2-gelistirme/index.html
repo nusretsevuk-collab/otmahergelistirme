@@ -73,7 +73,16 @@ tr:hover td{background:rgba(255,255,255,.02)}
 <header>
   <h1>Maliyet Uygulaması — Dinamik Salata + Dinamik Paketleme</h1>
   <div class="sub">Sabit 20/29 gibi değerler yok. Her şey reçete + birim fiyatlarla hesaplanır. (Offline çalışır, Kaydet/Yükle ile hafızaya alır)</div>
-  <div class="tabbar" id="topTabs"></div>
+  <div class="tabbar" id="topTabs">
+    <button class="tabbtn active" data-tab="maliyet">Maliyet Uygulaması</button>
+    <button class="tabbtn" data-tab="vergiozeti">Vergi Özeti</button>
+    <button class="tabbtn" data-tab="gunluksatis">Günlük Satış</button>
+    <button class="tabbtn" data-tab="veriaktar">Veri Aktar</button>
+    <button class="tabbtn" data-tab="giderfaturalar">Gider Faturaları</button>
+    <button class="tabbtn" data-tab="vergimerkezi">Vergi Merkezi</button>
+    <button class="tabbtn" data-tab="borctakibi">Borç Takibi</button>
+    <button class="tabbtn" data-tab="vergiayarlari">Vergi Ayarları</button>
+  </div>
 </header>
 
 <section id="page-maliyet" class="page active">
@@ -430,7 +439,7 @@ const TAX_DEFAULT={settings:{salesVat:10,tempTaxRate:25,reportStart:'',reportEnd
 let TAX_STATE=structuredClone(TAX_DEFAULT);
 const TAX_TABS=[['Maliyet Uygulaması','maliyet'],['Vergi Özeti','vergiozeti'],['Günlük Satış','gunluksatis'],['Veri Aktar','veriaktar'],['Gider Faturaları','giderfaturalar'],['Vergi Merkezi','vergimerkezi'],['Borç Takibi','borctakibi'],['Vergi Ayarları','vergiayarlari']];
 function tv(v){const x=parseFloat(v);return isFinite(x)?x:0}
-function initTabs(){const root=document.getElementById('topTabs');root.innerHTML=TAX_TABS.map(t=>`<button class="tabbtn" data-tab="${t[1]}">${t[0]}</button>`).join('');root.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>openTab(b.dataset.tab)));openTab('maliyet');}
+function initTabs(){const root=document.getElementById('topTabs');if(!root)return;root.innerHTML=TAX_TABS.map(t=>`<button class="tabbtn" data-tab="${t[1]}">${t[0]}</button>`).join('');root.querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>openTab(b.dataset.tab)));openTab('maliyet');}
 function openTab(name){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));const pg=document.getElementById('page-'+name);if(pg)pg.classList.add('active');document.querySelectorAll('.tabbtn').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));}
 function taxCompute(){const salesIncl=TAX_STATE.dailySales.reduce((a,r)=>a+r.total,0);const salesEx=salesIncl/(1+tv(TAX_STATE.settings.salesVat)/100);const outVat=salesIncl-salesEx;let expEx=0,inVat=0,tempExpEx=0;TAX_STATE.expenses.forEach(e=>{expEx+=e.kdvHaric;inVat+=e.indKdv;if(e.tempIncluded)tempExpEx+=e.kdvHaric});const payVat=outVat-inVat;const income=salesEx-tempExpEx;const tempRate=tv(TAX_STATE.settings.tempTaxRate)/100;const tempTax=Math.max(0,income)*tempRate;const realProfit=income-tempTax;const openDebt=TAX_STATE.debts.filter(d=>d.status!=='Ödendi').reduce((a,d)=>a+d.amount,0);return {salesIncl,salesEx,expEx,outVat,inVat,payVat,income,tempTax,realProfit,openDebt,tempRate};}
 function saveTax(){localStorage.setItem(TAX_KEY,JSON.stringify(TAX_STATE));}
@@ -664,6 +673,7 @@ let db=`<section class='card'><div class='hd'><h2>Borç Takibi</h2></div><div cl
 if(TAX_EDIT.debts!==null&&TAX_STATE.debts[TAX_EDIT.debts]){const d=TAX_STATE.debts[TAX_EDIT.debts];dbDue.value=d.due;dbDesc.value=d.desc;dbAmount.value=d.amount;dbStatus.value=d.status}
 document.getElementById('dbAdd')?.addEventListener('click',()=>{if(!dbDue.value||!dbDesc.value.trim()){alert('Vade ve açıklama zorunlu');return}const rec={due:dbDue.value,desc:dbDesc.value.trim(),amount:tv(dbAmount.value),status:dbStatus.value};if(TAX_EDIT.debts===null){TAX_STATE.debts.push(rec)}else{TAX_STATE.debts[TAX_EDIT.debts]=rec;TAX_EDIT.debts=null}saveTax();rTax();});document.getElementById('dbCancel')?.addEventListener('click',()=>{TAX_EDIT.debts=null;rTax();});document.querySelectorAll('[data-db-edit]').forEach(b=>b.onclick=()=>{TAX_EDIT.debts=+b.dataset.dbEdit;rTax();});document.querySelectorAll('[data-db]').forEach(b=>b.onclick=()=>{if(confirm('Silinsin mi?')){TAX_STATE.debts.splice(+b.dataset.db,1);if(TAX_EDIT.debts===+b.dataset.db)TAX_EDIT.debts=null;saveTax();rTax();}});}
 loadTax();
+document.addEventListener('DOMContentLoaded',()=>{initTabs();rTax();});
 initTabs();
 rTax();
 
