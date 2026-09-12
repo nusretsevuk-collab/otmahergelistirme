@@ -1,405 +1,160 @@
 <!doctype html>
 <html lang="tr">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>OTMAHER Modül Geliştirme</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#08111f">
+<title>OTMAHER Yönetim Paneli</title>
 <style>
-:root{--bg:#0b1220;--panel:#0f1a2e;--text:#e7eefc;--muted:#a7b7d6;--accent:#34d399;--warn:#fbbf24;--danger:#fb7185;--line:rgba(255,255,255,.09);--shadow:0 10px 30px rgba(0,0,0,.35);--radius:16px;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
-body{margin:0;background:radial-gradient(1200px 800px at 20% 10%,#12264b 0%,var(--bg) 55%);color:var(--text)}
-header{padding:16px 18px;position:sticky;top:0;backdrop-filter:blur(8px);background:rgba(11,18,32,.75);border-bottom:1px solid var(--line);z-index:5}
-header h1{font-size:16px;margin:0;font-weight:650;letter-spacing:.2px}
-header .sub{font-size:12px;color:var(--muted);margin-top:4px}
-.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-.tab-btn{width:auto;padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.08)}
-.tab-btn.active{background:rgba(52,211,153,.25);border-color:rgba(52,211,153,.45)}
-.tab-panel{display:none}
-.tab-panel.active{display:block}
-main{padding:18px;display:grid;grid-template-columns:380px 1fr;gap:14px;align-items:start}
-@media (max-width:980px){main{grid-template-columns:1fr}}
-.card{background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.015));border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
-.card .hd{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px}
-.card .hd h2{margin:0;font-size:13px;font-weight:700}.card .bd{padding:12px 14px}
-.row{display:flex;gap:10px;flex-wrap:wrap}.col{flex:1 1 140px}
-label{display:block;font-size:11px;color:var(--muted);margin-bottom:6px}
-input,select,button,textarea{width:100%;box-sizing:border-box;background:rgba(0,0,0,.18);border:1px solid var(--line);border-radius:12px;color:var(--text);padding:10px;outline:none}
-textarea{min-height:110px;resize:vertical}
-button{cursor:pointer;font-weight:700;background:rgba(52,211,153,.15);border-color:rgba(52,211,153,.35)}
-button:hover{background:rgba(52,211,153,.22)} .btn2{background:rgba(251,191,36,.14);border-color:rgba(251,191,36,.35)} .btndanger{background:rgba(251,113,133,.12);border-color:rgba(251,113,133,.35)}
-.kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}@media (max-width:980px){.kpi{grid-template-columns:repeat(2,1fr)}}
-.k{background:rgba(0,0,0,.18);border:1px solid var(--line);border-radius:14px;padding:10px}.k .t{font-size:11px;color:var(--muted)}.k .v{margin-top:6px;font-size:18px;font-weight:800}
-.k .v.warn{color:var(--warn)}.k .v.acc{color:var(--accent)}.k .v.dng{color:var(--danger)}
-table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:8px;border-bottom:1px solid var(--line);text-align:left}th{color:#cfe2ff;font-weight:750;font-size:11px;text-transform:uppercase;background:rgba(0,0,0,.14)}
-.mini{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.35}.pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:rgba(0,0,0,.18);font-size:11px;color:var(--muted)}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media (max-width:980px){.grid2{grid-template-columns:1fr}} .tight input{padding:8px 10px;border-radius:10px}.right{text-align:right}
+:root{--bg:#07101d;--bg2:#0b1728;--panel:#0d1a2c;--panel2:#11223a;--line:rgba(255,255,255,.09);--text:#edf5ff;--muted:#92a6bf;--green:#39d98a;--yellow:#f6c85f;--red:#ff6b7a;--blue:#56a8ff;--cyan:#4fd1c5;--r:18px;--shadow:0 20px 55px rgba(0,0,0,.28);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+*{box-sizing:border-box}html{background:var(--bg)}body{margin:0;color:var(--text);background:radial-gradient(850px 520px at 0% 0%,rgba(63,121,255,.18),transparent 62%),radial-gradient(700px 470px at 100% 5%,rgba(57,217,138,.09),transparent 64%),var(--bg);min-height:100vh}button,input{font:inherit}.app{max-width:1480px;margin:auto;padding:0 18px 50px}.top{position:sticky;top:0;z-index:20;margin:0 -18px;padding:13px 18px;background:rgba(7,16,29,.88);backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}.topin{max-width:1480px;margin:auto;display:flex;align-items:center;gap:14px}.brand{display:flex;align-items:center;gap:11px;min-width:0}.logo{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;background:linear-gradient(145deg,#1d8b64,#39d98a);font-weight:900;color:#04140d;box-shadow:0 10px 25px rgba(57,217,138,.22)}.brand h1{font-size:16px;margin:0;letter-spacing:.2px}.brand small{display:block;color:var(--muted);font-size:11px;margin-top:2px}.topactions{margin-left:auto;display:flex;align-items:center;gap:8px}.iconbtn,.btn{border:1px solid var(--line);color:var(--text);background:rgba(255,255,255,.055);border-radius:12px;padding:9px 12px;cursor:pointer}.iconbtn:hover,.btn:hover{background:rgba(255,255,255,.09)}.btn.primary{background:rgba(57,217,138,.15);border-color:rgba(57,217,138,.4);color:#d9ffed}.live{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:12px;white-space:nowrap}.dot{width:8px;height:8px;border-radius:50%;background:#62748a;box-shadow:0 0 0 4px rgba(98,116,138,.12)}.dot.ok{background:var(--green);box-shadow:0 0 0 4px rgba(57,217,138,.13)}.dot.bad{background:var(--red);box-shadow:0 0 0 4px rgba(255,107,122,.12)}
+.nav{display:flex;gap:8px;overflow:auto;padding:16px 0 4px;scrollbar-width:none}.nav::-webkit-scrollbar{display:none}.nav button{white-space:nowrap;border:1px solid var(--line);background:rgba(255,255,255,.035);color:var(--muted);border-radius:999px;padding:9px 14px;cursor:pointer}.nav button.active{color:var(--text);background:rgba(86,168,255,.13);border-color:rgba(86,168,255,.35)}.view{display:none}.view.active{display:block}.hero{display:flex;align-items:end;justify-content:space-between;gap:15px;margin:18px 0 14px}.hero h2{margin:0;font-size:27px;letter-spacing:-.6px}.hero p{margin:6px 0 0;color:var(--muted);font-size:13px}.timestamp{color:var(--muted);font-size:12px;text-align:right}
+.grid{display:grid;gap:12px}.kpis{grid-template-columns:repeat(5,minmax(0,1fr))}.card{background:linear-gradient(180deg,rgba(17,34,58,.78),rgba(13,26,44,.88));border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}.kpi{padding:16px;min-height:110px;position:relative;overflow:hidden}.kpi:after{content:"";position:absolute;right:-22px;bottom:-38px;width:110px;height:110px;border-radius:50%;background:rgba(255,255,255,.025)}.label{color:var(--muted);font-size:12px}.value{font-size:25px;font-weight:850;margin-top:9px;letter-spacing:-.6px}.subvalue{margin-top:7px;color:var(--muted);font-size:11px}.value.green{color:var(--green)}.value.yellow{color:var(--yellow)}.value.red{color:var(--red)}.value.blue{color:var(--blue)}.cols{grid-template-columns:minmax(0,1.25fr) minmax(330px,.75fr);margin-top:12px}.section{padding:16px}.sectionhd{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:13px}.sectionhd h3{font-size:14px;margin:0}.hint{font-size:11px;color:var(--muted)}.pill{font-size:11px;padding:5px 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:rgba(0,0,0,.13)}.pill.ok{color:#baf8d6;border-color:rgba(57,217,138,.32);background:rgba(57,217,138,.08)}.pill.warn{color:#ffe3a2;border-color:rgba(246,200,95,.32);background:rgba(246,200,95,.08)}.pill.bad{color:#ffc2c8;border-color:rgba(255,107,122,.32);background:rgba(255,107,122,.08)}
+.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:14px}table{width:100%;border-collapse:collapse;min-width:680px;font-size:12px}th,td{text-align:left;padding:10px 11px;border-bottom:1px solid var(--line);vertical-align:top}th{font-size:10px;text-transform:uppercase;letter-spacing:.55px;color:#a9bad0;background:rgba(5,12,22,.55);position:sticky;top:0}tr:last-child td{border-bottom:0}.money{font-variant-numeric:tabular-nums;white-space:nowrap}.muted{color:var(--muted)}.right{text-align:right}.empty{padding:30px 18px;text-align:center;color:var(--muted)}
+.kitchenGrid{grid-template-columns:repeat(3,minmax(0,1fr))}.kitchen{padding:16px}.kitchenname{font-weight:800;font-size:15px}.miniGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.mini{background:rgba(0,0,0,.15);border:1px solid var(--line);border-radius:13px;padding:10px}.mini b{display:block;margin-top:5px;font-size:15px}.barlist{display:grid;gap:10px}.barrow{display:grid;grid-template-columns:84px 1fr 100px;gap:9px;align-items:center;font-size:11px}.bartrack{height:8px;background:rgba(255,255,255,.06);border-radius:999px;overflow:hidden}.barfill{height:100%;border-radius:999px;background:linear-gradient(90deg,#3d8cff,#4fd1c5)}.barfill.neg{background:linear-gradient(90deg,#ff8a5b,#ff5f6d)}
+.alerts{display:grid;gap:9px}.alert{padding:12px;border:1px solid var(--line);background:rgba(0,0,0,.13);border-radius:14px;display:flex;gap:10px}.alert .mark{width:9px;height:9px;border-radius:50%;margin-top:4px;background:var(--yellow);flex:0 0 auto}.alert.bad .mark{background:var(--red)}.alert.ok .mark{background:var(--green)}.alert b{font-size:12px}.alert div div{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.45}.search{width:100%;border:1px solid var(--line);background:rgba(0,0,0,.18);color:var(--text);border-radius:12px;padding:10px 12px;outline:none}.search:focus{border-color:rgba(86,168,255,.5)}
+.settings{max-width:760px}.formrow{display:grid;grid-template-columns:1fr;gap:7px;margin-bottom:13px}.formrow label{font-size:12px;color:var(--muted)}.formrow input{width:100%;border:1px solid var(--line);background:rgba(0,0,0,.2);color:var(--text);padding:11px 12px;border-radius:12px;outline:none}.formrow input:focus{border-color:rgba(86,168,255,.5)}.formactions{display:flex;gap:8px;flex-wrap:wrap}.note{padding:12px 14px;border-radius:13px;background:rgba(86,168,255,.075);border:1px solid rgba(86,168,255,.18);color:#bed7f5;font-size:12px;line-height:1.5}.toast{position:fixed;right:18px;bottom:18px;background:#12233a;border:1px solid var(--line);color:var(--text);padding:11px 14px;border-radius:12px;box-shadow:var(--shadow);font-size:12px;opacity:0;pointer-events:none;transform:translateY(10px);transition:.2s;z-index:50}.toast.show{opacity:1;transform:none}.skeleton{background:linear-gradient(90deg,rgba(255,255,255,.035),rgba(255,255,255,.08),rgba(255,255,255,.035));background-size:200% 100%;animation:sh 1.3s infinite;border-radius:7px;color:transparent!important}@keyframes sh{to{background-position:-200% 0}}
+@media(max-width:1100px){.kpis{grid-template-columns:repeat(3,1fr)}.cols{grid-template-columns:1fr}.kitchenGrid{grid-template-columns:1fr 1fr}}@media(max-width:720px){.app{padding:0 12px 35px}.top{margin:0 -12px;padding:11px 12px}.brand small{display:none}.live span{display:none}.iconbtn{padding:9px 10px}.hero{align-items:start}.hero h2{font-size:22px}.timestamp{display:none}.kpis{grid-template-columns:1fr 1fr}.kpi{min-height:102px;padding:14px}.value{font-size:21px}.kitchenGrid{grid-template-columns:1fr}.barrow{grid-template-columns:70px 1fr 80px}.section{padding:13px}.topactions .hideMobile{display:none}}@media(max-width:420px){.kpis{grid-template-columns:1fr 1fr}.kpi:last-child{grid-column:1/-1}.logo{width:36px;height:36px}.brand h1{font-size:14px}}
 </style>
 </head>
 <body>
-<header>
-  <h1>OTMAHER Maliyet + Ek Modüller</h1>
-  <div class="sub">Ana maliyet hesapları V2 yapısında korunur. Günlük Takip, Vergi & Gider ve Raporlar ayrı sekmelerde çalışır.</div>
-  <div class="tabs">
-    <button class="tab-btn active" data-tab="maliyet">Ana Maliyet</button>
-    <button class="tab-btn" data-tab="gunluk">Günlük Takip</button>
-    <button class="tab-btn" data-tab="vergi">Vergi & Gider</button>
-    <button class="tab-btn" data-tab="rapor">Raporlar</button>
+<div class="app">
+<header class="top"><div class="topin">
+  <div class="brand"><div class="logo">OT</div><div><h1>OTMAHER</h1><small>Canlı işletme ve kârlılık paneli</small></div></div>
+  <div class="topactions"><div class="live"><i id="liveDot" class="dot"></i><span id="liveText">Bağlantı bekleniyor</span></div><button class="iconbtn hideMobile" id="settingsTop">Bağlantı</button><button class="iconbtn" id="refreshBtn">↻ Yenile</button></div>
+</div></header>
+<nav class="nav" id="nav">
+  <button class="active" data-view="overview">Genel Bakış</button>
+  <button data-view="orders">Siparişler</button>
+  <button data-view="kitchens">Mutfaklar</button>
+  <button data-view="history">Geçmiş</button>
+  <button data-view="matching">Eşleştirme</button>
+  <button data-view="system">Sistem</button>
+  <button data-view="settings">Ayarlar</button>
+</nav>
+
+<section id="overview" class="view active">
+  <div class="hero"><div><h2>Genel Bakış</h2><p id="overviewSub">OTMAHER canlı verileri</p></div><div class="timestamp" id="updatedText">—</div></div>
+  <div class="grid kpis">
+    <div class="card kpi"><div class="label">Bugünkü Net Kâr</div><div class="value green" id="kNet">—</div><div class="subvalue" id="kNetSub">Kesin / geçici durum</div></div>
+    <div class="card kpi"><div class="label">Bugünkü Ciro</div><div class="value blue" id="kRevenue">—</div><div class="subvalue">Gerçek net ciro</div></div>
+    <div class="card kpi"><div class="label">Sipariş</div><div class="value" id="kOrders">—</div><div class="subvalue">Kapanmış sipariş</div></div>
+    <div class="card kpi"><div class="label">Ana Ürün</div><div class="value" id="kMainProducts">—</div><div class="subvalue">Eşlenen ana ürün adedi</div></div>
+    <div class="card kpi"><div class="label">Birikimli Kesin Net</div><div class="value green" id="kAccNet">—</div><div class="subvalue" id="kAccSub">Takip dönemi</div></div>
   </div>
-</header>
-<div id="maliyet" class="tab-panel active"> 
-<!-- V2 main content -->
-<main>
-  <section class="card">
-    <div class="hd"><h2>Ayarlar</h2><span class="pill" id="statePill">Durum: hazır</span></div>
-    <div class="bd">
-      <div class="row">
-        <div class="col"><label>Komisyon % (c)</label><input id="c" type="number" step="0.1" value="10"></div>
-        <div class="col"><label>Satış KDV % (v)</label><input id="v" type="number" step="0.1" value="10"></div>
-        <div class="col"><label>Komisyon KDV %</label><input id="cv" type="number" step="0.1" value="18"></div>
-      </div>
+  <div class="grid cols">
+    <div class="card section"><div class="sectionhd"><h3>Son Günler</h3><span class="pill" id="historyPill">—</span></div><div class="barlist" id="historyBars"><div class="empty">Veri bekleniyor</div></div></div>
+    <div class="card section"><div class="sectionhd"><h3>Kontrol Merkezi</h3><span class="pill" id="healthPill">—</span></div><div class="alerts" id="alerts"><div class="empty">Veri bekleniyor</div></div></div>
+  </div>
+  <div class="card section" style="margin-top:12px"><div class="sectionhd"><h3>Son Siparişler</h3><button class="btn" data-go="orders">Tümünü gör</button></div><div id="recentOrdersWrap"></div></div>
+</section>
 
-      <div class="row" style="margin-top:10px;">
-        <div class="col"><label>Net gelir katsayısı</label><input id="katsayi" type="number" step="0.001" value="0.791"></div>
-        <div class="col" style="display:flex; align-items:end;"><button id="calcK">Katsayıyı hesapla</button></div>
-      </div>
+<section id="orders" class="view">
+  <div class="hero"><div><h2>Siparişler</h2><p>Müşteri kişisel verisi olmadan operasyon görünümü</p></div></div>
+  <div class="card section"><div class="sectionhd"><h3>Son Siparişler</h3><span class="pill" id="ordersCount">0 kayıt</span></div><input class="search" id="orderSearch" placeholder="Mutfak, platform, ürün, sipariş ID ara…"><div id="ordersTable" style="margin-top:12px"></div></div>
+</section>
 
-      <div class="mini">Katsayı mantığı: <span class="muted">Etiket (KDV dahil)</span> × <span class="ok">katsayı</span> = <span class="muted">Net gelir</span> (platform kesintileri + KDV sonrası).<br/>Not: Senin tablondaki doğrulanmış değer: <b>0,791</b>.</div>
+<section id="kitchens" class="view">
+  <div class="hero"><div><h2>Mutfaklar</h2><p id="breakdownDateText">Mutfak ve platform performansı</p></div></div>
+  <div class="grid kitchenGrid" id="kitchenGrid"><div class="card section empty">Veri bekleniyor</div></div>
+  <div class="card section" style="margin-top:12px"><div class="sectionhd"><h3>Platform Detayı</h3><span class="pill" id="breakdownPill">—</span></div><div id="breakdownTable"></div></div>
+</section>
 
-      <hr style="border:0;border-top:1px solid var(--line); margin:14px 0;"/>
+<section id="history" class="view">
+  <div class="hero"><div><h2>Geçmiş</h2><p>Günlük net kâr ve ciro geçmişi</p></div></div>
+  <div class="card section"><div class="sectionhd"><h3>Günlük Sonuçlar</h3><span class="pill" id="historyCount">0 gün</span></div><div id="historyTable"></div></div>
+</section>
 
-      <div class="row">
-        <div class="col"><label>Hedef Net Kâr (Porsiyon / 500 g)</label><input id="targetSmall" type="number" step="1" value="135"></div>
-        <div class="col"><label>Hedef Net Kâr (1 kg)</label><input id="targetKg" type="number" step="1" value="220"></div>
-      </div>
+<section id="matching" class="view">
+  <div class="hero"><div><h2>Eşleştirme</h2><p>Ürün eşleşmesi, maliyet ve kontrol sorunları</p></div></div>
+  <div class="grid kpis" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+    <div class="card kpi"><div class="label">Eşleşmeyen</div><div class="value" id="mUnmatched">—</div><div class="subvalue">Sistem durumundaki değer</div></div>
+    <div class="card kpi"><div class="label">Kimlikle Eşleşen</div><div class="value blue" id="mIdMatched">—</div><div class="subvalue">Son senkron</div></div>
+    <div class="card kpi"><div class="label">Adla Yedek Eşleşen</div><div class="value" id="mNameMatched">—</div><div class="subvalue">Son senkron</div></div>
+  </div>
+  <div class="card section" style="margin-top:12px"><div class="sectionhd"><h3>Kontrol Bekleyenler</h3><span class="pill" id="issuesCount">0 sorun</span></div><div class="alerts" id="issuesList"><div class="empty">Veri bekleniyor</div></div></div>
+</section>
 
-      <div class="row" style="margin-top:10px;">
-        <div class="col"><button id="saveBtn">Kaydet</button></div>
-        <div class="col"><button class="btn2" id="loadBtn">Yükle</button></div>
-        <div class="col"><button class="btndanger" id="resetBtn">Sıfırla</button></div>
-      </div>
+<section id="system" class="view">
+  <div class="hero"><div><h2>Sistem</h2><p>Adisyo ve OTMAHER sağlık durumu</p></div></div>
+  <div class="card section"><div class="sectionhd"><h3>Bağlantı Sağlığı</h3><span class="pill" id="systemPill">—</span></div><div id="systemGrid" class="grid" style="grid-template-columns:repeat(3,minmax(0,1fr))"></div></div>
+</section>
 
-      <div class="mini">Kaydet/Yükle tarayıcı hafızasına (localStorage) yazar/okur.</div>
-    </div>
-  </section>
-
-  <section style="display:grid; gap:14px;">
-    <section class="card">
-      <div class="hd"><h2>Hızlı Hesap</h2><div class="pill">Seç → maliyetleri gör → etiket fiyatını üret</div></div>
-      <div class="bd">
-        <div class="row">
-          <div class="col"><label>Ürün</label><select id="urunSel"></select></div>
-          <div class="col"><label>Boy</label><select id="boySel"></select></div>
-          <div class="col"><label>Adet</label><input id="adetSel" type="number" step="1" value="1" min="1"></div>
-          <div class="col"><label>Ekstra Ayran (adet)</label><input id="ayranSel" type="number" step="1" value="0" min="0"></div>
-          <div class="col"><label>Ekmek (adet)</label><input id="ekmekSel" type="number" step="1" value="1" min="0"></div>
-        </div>
-
-        <div class="kpi" style="margin-top:12px;">
-          <div class="k"><div class="t">Et Maliyeti</div><div class="v" id="kEt">-</div></div>
-          <div class="k"><div class="t">Salata Maliyeti</div><div class="v" id="kSalata">-</div></div>
-          <div class="k"><div class="t">Paketleme Maliyeti</div><div class="v" id="kPack">-</div></div>
-          <div class="k"><div class="t">Toplam Maliyet</div><div class="v warn" id="kTop">-</div></div>
-        </div>
-
-        <div class="kpi" style="margin-top:10px;">
-          <div class="k"><div class="t">Hedef Net Kâr</div><div class="v acc" id="kHedef">-</div></div>
-          <div class="k"><div class="t">Önerilen Etiket (KDV dahil)</div><div class="v acc" id="kEtiket">-</div></div>
-          <div class="k"><div class="t">Net Gelir (Etiket×katsayı)</div><div class="v" id="kNetGelir">-</div></div>
-          <div class="k"><div class="t">Net Kâr</div><div class="v" id="kNetKar">-</div></div>
-        </div>
-
-        <div class="mini">Net kâr hesabı: <b>Net gelir = Etiket × katsayı</b> → <b>Net kâr = Net gelir - Toplam maliyet</b>.</div>
-      </div>
-    </section>
-
-    <section class="grid2">
-      <section class="card">
-        <div class="hd"><h2>Birim Fiyatlar</h2><span class="pill">kg ve adet</span></div>
-        <div class="bd tight">
-          <table id="tblPrices"></table>
-          <div class="mini">Birim fiyat değiştirince tüm hesaplar anında güncellenir.</div>
-        </div>
-      </section>
-
-      <section class="card">
-        <div class="hd"><h2>Paketleme Reçetesi (adet)</h2><span class="pill">Boy bazlı</span></div>
-        <div class="bd tight">
-          <table id="tblPack"></table>
-          <div class="mini">Porsiyon/500g ve 1kg için paketleme adetlerini düzenleyebilirsin.</div>
-        </div>
-      </section>
-    </section>
-
-    <section class="card">
-      <div class="hd"><h2>Ürün Reçeteleri (gram)</h2><span class="pill">Et + Salata</span></div>
-      <div class="bd tight">
-        <div class="mini" style="margin-bottom:8px;">Her satır bir ürün+boy kombinasyonu. Gram değiştirince maliyet otomatik güncellenir.</div>
-        <div style="max-height:360px; overflow:auto; border:1px solid var(--line); border-radius:12px;">
-          <table id="tblRec"></table>
-        </div>
-      </div>
-    </section>
-
-    <section class="card">
-      <div class="hd"><h2>Tüm Kombinasyonlar (Özet)</h2><div class="row" style="gap:8px; align-items:center;"><button id="refreshAll">Özeti Yenile</button></div></div>
-      <div class="bd">
-        <div style="max-height:360px; overflow:auto; border:1px solid var(--line); border-radius:12px;">
-          <table id="tblAll"></table>
-        </div>
-        <div class="mini">Bu tabloda adet=1, ayran=0, ekmek=1 varsayımıyla listeler.</div>
-      </div>
-    </section>
-  </section>
-</main>
+<section id="settings" class="view">
+  <div class="hero"><div><h2>Bağlantı Ayarları</h2><p>Bu bilgiler yalnızca bu cihazın tarayıcı hafızasında tutulur.</p></div></div>
+  <div class="card section settings">
+    <div class="note">OTMAHER paneli Google Sheet'e doğrudan bağlanmaz. Yalnızca salt-okunur Apps Script API'sini okur. API adresi ve erişim anahtarı kaynak koda veya GitHub'a yazılmaz.</div>
+    <div class="formrow" style="margin-top:16px"><label>Apps Script Web API adresi</label><input id="apiUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off"></div>
+    <div class="formrow"><label>OTMAHER Web Token</label><input id="apiToken" type="password" placeholder="Gizli erişim anahtarı" autocomplete="off"></div>
+    <div class="formactions"><button class="btn primary" id="saveConnection">Kaydet ve Bağlan</button><button class="btn" id="testConnection">Bağlantıyı Test Et</button><button class="btn" id="forgetConnection">Bu Cihazdan Sil</button></div>
+    <div class="hint" style="margin-top:12px" id="settingsStatus">Henüz bağlantı kurulmadı.</div>
+  </div>
+</section>
 </div>
-<div id="gunluk" class="tab-panel"><main><section class="card"><div class="hd"><h2>Günlük Takip Modülü</h2></div><div class="bd"><label>Tarih</label><input id="gunlukTarih" type="date"><label>Not</label><textarea id="gunlukNot"></textarea><div class="row"><div class="col"><button id="gunlukKaydet">Kaydet</button></div><div class="col"><button class="btn2" id="gunlukYukle">Yükle</button></div></div><div class="mini" id="gunlukDurum">Durum: hazır</div></div></section></main></div>
-<div id="vergi" class="tab-panel"><main><section class="card"><div class="hd"><h2>Vergi & Gider Modülü</h2></div><div class="bd"><div class="row"><div class="col"><label>Aylık Vergi (TL)</label><input id="vergiTutar" type="number" step="0.01"></div><div class="col"><label>Aylık Sabit Gider (TL)</label><input id="giderTutar" type="number" step="0.01"></div></div><div class="row"><div class="col"><button id="vergiKaydet">Kaydet</button></div><div class="col"><button class="btn2" id="vergiYukle">Yükle</button></div></div><div class="mini" id="vergiDurum">Durum: hazır</div></div></section></main></div>
-<div id="rapor" class="tab-panel"><main><section class="card"><div class="hd"><h2>Raporlar</h2></div><div class="bd"><p class="mini">Bu sekme diğer modüllerde tutulan verileri salt-okuma olarak gösterir; ana maliyet hesap fonksiyonlarını etkilemez.</p><pre id="raporCikti"></pre><button id="raporYenile">Raporu Yenile</button></div></section></main></div>
+<div class="toast" id="toast"></div>
 <script>
-
-const DEFAULT = {
-  params:{c:10,v:10,cv:18,katsayi:0.791,targetSmall:135,targetKg:220},
-  prices:{
-    "Bonfile":{unit:"kg",price:138},
-    "Pirzola":{unit:"kg",price:100},
-    "Kanat":{unit:"kg",price:150},
-    "Köfte":{unit:"kg",price:300},
-    "Marul":{unit:"kg",price:85},
-    "Domates":{unit:"kg",price:59},
-    "Soğan":{unit:"kg",price:15},
-    "Lavaş":{unit:"adet",price:2},
-    "Pilav paketi (120 g)":{unit:"adet",price:2},
-    "Sızdırmaz kap":{unit:"adet",price:1.35},
-    "Köpük tabak":{unit:"adet",price:1.25},
-    "6'lı servis set":{unit:"adet",price:1.5},
-    "Poşet":{unit:"adet",price:0.5},
-    "Ayran":{unit:"adet",price:20},
-    "Ekmek":{unit:"adet",price:6}
-  },
-  packBySize:{
-    "Porsiyon":{"Lavaş":0.5,"Pilav paketi (120 g)":1,"Sızdırmaz kap":1,"Köpük tabak":2,"6'lı servis set":1,"Poşet":1},
-    "500 g":{"Lavaş":0.5,"Pilav paketi (120 g)":1,"Sızdırmaz kap":1,"Köpük tabak":2,"6'lı servis set":1,"Poşet":1},
-    "1 kg":{"Lavaş":1,"Pilav paketi (120 g)":2,"Sızdırmaz kap":2,"Köpük tabak":2,"6'lı servis set":1,"Poşet":1}
-  },
-  recipes:[
-    {urun:"Karışık",boy:"Porsiyon",Bonfile:70,Pirzola:130,Kanat:80,"Köfte":70,Marul:30,Domates:30,"Soğan":30},
-    {urun:"Bonfile",boy:"Porsiyon",Bonfile:300,Pirzola:0,Kanat:0,"Köfte":0,Marul:30,Domates:30,"Soğan":30},
-    {urun:"Pirzola",boy:"Porsiyon",Bonfile:0,Pirzola:300,Kanat:0,"Köfte":0,Marul:30,Domates:30,"Soğan":30},
-    {urun:"Kanat",boy:"Porsiyon",Bonfile:0,Pirzola:0,Kanat:300,"Köfte":0,Marul:30,Domates:30,"Soğan":30},
-    {urun:"Köfte",boy:"Porsiyon",Bonfile:0,Pirzola:0,Kanat:0,"Köfte":210,Marul:30,Domates:30,"Soğan":30},
-
-    {urun:"Karışık",boy:"500 g",Bonfile:100,Pirzola:186,Kanat:114,"Köfte":100,Marul:30,Domates:30,"Soğan":30},
-    {urun:"Bonfile",boy:"500 g",Bonfile:500,Pirzola:0,Kanat:0,"Köfte":0,Marul:30,Domates:30,"Soğan":30},
-    {urun:"Pirzola",boy:"500 g",Bonfile:0,Pirzola:500,Kanat:0,"Köfte":0,Marul:30,Domates:30,"Soğan":30},
-    {urun:"Kanat",boy:"500 g",Bonfile:0,Pirzola:0,Kanat:500,"Köfte":0,Marul:30,Domates:30,"Soğan":30},
-    {urun:"Köfte",boy:"500 g",Bonfile:0,Pirzola:0,Kanat:0,"Köfte":500,Marul:30,Domates:30,"Soğan":30},
-
-    {urun:"Karışık",boy:"1 kg",Bonfile:200,Pirzola:371,Kanat:229,"Köfte":200,Marul:60,Domates:60,"Soğan":60},
-    {urun:"Bonfile",boy:"1 kg",Bonfile:1000,Pirzola:0,Kanat:0,"Köfte":0,Marul:60,Domates:60,"Soğan":60},
-    {urun:"Pirzola",boy:"1 kg",Bonfile:0,Pirzola:1000,Kanat:0,"Köfte":0,Marul:60,Domates:60,"Soğan":60},
-    {urun:"Kanat",boy:"1 kg",Bonfile:0,Pirzola:0,Kanat:1000,"Köfte":0,Marul:60,Domates:60,"Soğan":60},
-    {urun:"Köfte",boy:"1 kg",Bonfile:0,Pirzola:0,Kanat:0,"Köfte":1000,Marul:60,Domates:60,"Soğan":60}
-  ]
-};
-const LS_KEY="maliyet_app_v2_dynamic_pack";
-let STATE=structuredClone(DEFAULT);
-
-const fmt=n=>isFinite(n)?new Intl.NumberFormat("tr-TR",{minimumFractionDigits:2,maximumFractionDigits:2}).format(n)+" TL":"-";
-const fmt0=n=>isFinite(n)?new Intl.NumberFormat("tr-TR",{maximumFractionDigits:0}).format(n)+" TL":"-";
-const num=v=>{const x=parseFloat(String(v).replace(",", "."));return isFinite(x)?x:0};
-
-function setPill(text,kind="ok"){
-  const el=document.getElementById("statePill");
-  el.textContent=text;
-  el.style.borderColor=kind==="dng"?"rgba(251,113,133,.5)":kind==="warn"?"rgba(251,191,36,.5)":"rgba(52,211,153,.45)";
-  el.style.color=kind==="dng"?"var(--danger)":kind==="warn"?"var(--warn)":"var(--muted)";
-}
-
-function computeKatsayi(cPct,vPct,cvPct){
-  const c=cPct/100,v=vPct/100,cv=cvPct/100;
-  const k=(1-v)*(1-c*(1+cv)); // yaklaşık
-  return Math.max(0,Math.min(1,k));
-}
-
-function getRecipe(urun,boy){return STATE.recipes.find(r=>r.urun===urun&&r.boy===boy)}
-function costMeat(r){
-  const p=STATE.prices;
-  return (r.Bonfile/1000)*p["Bonfile"].price+(r.Pirzola/1000)*p["Pirzola"].price+(r.Kanat/1000)*p["Kanat"].price+(r["Köfte"]/1000)*p["Köfte"].price;
-}
-function costSalad(r){
-  const p=STATE.prices;
-  return (r.Marul/1000)*p["Marul"].price+(r.Domates/1000)*p["Domates"].price+(r["Soğan"]/1000)*p["Soğan"].price;
-}
-function costPack(boy,adet=1,ayran=0,ekmek=0){
-  const p=STATE.prices, pack=STATE.packBySize[boy];
-  let s=0;
-  for(const k of Object.keys(pack)) s+=(pack[k]||0)*(p[k]?.price??0);
-  s+=(ayran||0)*p["Ayran"].price;
-  s+=(ekmek||0)*p["Ekmek"].price;
-  return s*adet;
-}
-function totalCost(urun,boy,adet=1,ayran=0,ekmek=0){
-  const r=getRecipe(urun,boy); if(!r) return {et:0,salata:0,pack:0,total:0};
-  const et=costMeat(r)*adet, salata=costSalad(r)*adet, pack=costPack(boy,adet,ayran,ekmek);
-  return {et,salata,pack,total:et+salata+pack};
-}
-function targetForSize(boy){return boy==="1 kg"?num(document.getElementById("targetKg").value):num(document.getElementById("targetSmall").value)}
-function recommendedLabelPrice(maliyet,hedef,k){return k>0?(maliyet+hedef)/k:NaN}
-
-function renderSelectors(){
-  const urunSel=document.getElementById("urunSel"), boySel=document.getElementById("boySel");
-  const urunler=[...new Set(STATE.recipes.map(r=>r.urun))];
-  urunSel.innerHTML=urunler.map(u=>`<option value="${u}">${u}</option>`).join("");
-  const fillBoy=()=>{const boys=STATE.recipes.filter(r=>r.urun===urunSel.value).map(r=>r.boy); boySel.innerHTML=boys.map(b=>`<option value="${b}">${b}</option>`).join("")}
-  urunSel.addEventListener("change",()=>{fillBoy();refreshQuick()});
-  boySel.addEventListener("change",refreshQuick);
-  fillBoy();
-}
-function renderPrices(){
-  const tbl=document.getElementById("tblPrices");
-  const rows=Object.entries(STATE.prices);
-  tbl.innerHTML=`<thead><tr><th>Kalem</th><th>Birim</th><th class="right">Birim Fiyat (TL)</th></tr></thead>
-  <tbody>${rows.map(([k,v])=>`<tr><td>${k}</td><td class="muted">${v.unit}</td><td class="right"><input data-price="${k}" type="number" step="0.01" value="${v.price}"></td></tr>`).join("")}</tbody>`;
-  tbl.querySelectorAll("input[data-price]").forEach(inp=>{
-    inp.addEventListener("input",e=>{const key=e.target.getAttribute("data-price"); STATE.prices[key].price=num(e.target.value); refreshQuick();});
-  });
-}
-function renderPack(){
-  const tbl=document.getElementById("tblPack");
-  const items=Object.keys(STATE.packBySize["Porsiyon"]);
-  const sizes=Object.keys(STATE.packBySize);
-  tbl.innerHTML=`<thead><tr><th>Kalem</th>${sizes.map(s=>`<th class="right">${s}</th>`).join("")}</tr></thead>
-  <tbody>${items.map(it=>`<tr><td>${it}</td>${sizes.map(s=>`<td class="right"><input data-pack="${it}" data-size="${s}" type="number" step="0.1" value="${STATE.packBySize[s][it]??0}"></td>`).join("")}</tr>`).join("")}</tbody>`;
-  tbl.querySelectorAll("input[data-pack]").forEach(inp=>{
-    inp.addEventListener("input",e=>{const it=e.target.getAttribute("data-pack"); const s=e.target.getAttribute("data-size"); STATE.packBySize[s][it]=num(e.target.value); refreshQuick();});
-  });
-}
-function renderRecipes(){
-  const tbl=document.getElementById("tblRec");
-  const cols=["Bonfile","Pirzola","Kanat","Köfte","Marul","Domates","Soğan"];
-  tbl.innerHTML=`<thead><tr><th>Ürün</th><th>Boy</th>${cols.map(c=>`<th class="right">${c} (g)</th>`).join("")}</tr></thead>
-  <tbody>${STATE.recipes.map((r,idx)=>`<tr><td>${r.urun}</td><td class="muted">${r.boy}</td>${cols.map(c=>`<td class="right"><input data-rec="${idx}" data-col="${c}" type="number" step="1" value="${r[c]}"></td>`).join("")}</tr>`).join("")}</tbody>`;
-  tbl.querySelectorAll("input[data-rec]").forEach(inp=>{
-    inp.addEventListener("input",e=>{const idx=parseInt(e.target.getAttribute("data-rec"),10); const col=e.target.getAttribute("data-col"); STATE.recipes[idx][col]=Math.max(0,Math.round(num(e.target.value))); refreshQuick();});
-  });
-}
-function renderAll(){
-  const tbl=document.getElementById("tblAll");
-  const k=num(document.getElementById("katsayi").value);
-  const rows=STATE.recipes.map(r=>{
-    const costs=totalCost(r.urun,r.boy,1,0,1);
-    const hedef=targetForSize(r.boy);
-    const etiket=recommendedLabelPrice(costs.total,hedef,k);
-    const netKar=(etiket*k)-costs.total;
-    return {...r,costs,hedef,etiket,netKar};
-  });
-  tbl.innerHTML=`<thead><tr><th>Ürün</th><th>Boy</th><th class="right">Et</th><th class="right">Salata</th><th class="right">Paket</th><th class="right">Toplam</th><th class="right">Hedef</th><th class="right">Etiket</th><th class="right">Net Kâr</th></tr></thead>
-  <tbody>${rows.map(x=>`<tr><td>${x.urun}</td><td class="muted">${x.boy}</td><td class="right">${fmt0(x.costs.et)}</td><td class="right">${fmt0(x.costs.salata)}</td><td class="right">${fmt0(x.costs.pack)}</td><td class="right"><b>${fmt0(x.costs.total)}</b></td><td class="right">${fmt0(x.hedef)}</td><td class="right"><b class="ok">${fmt0(x.etiket)}</b></td><td class="right">${fmt0(x.netKar)}</td></tr>`).join("")}</tbody>`;
-}
-
-function refreshQuick(){
-  const urun=document.getElementById("urunSel").value;
-  const boy=document.getElementById("boySel").value;
-  const adet=Math.max(1,Math.round(num(document.getElementById("adetSel").value)));
-  const ayran=Math.max(0,Math.round(num(document.getElementById("ayranSel").value)));
-  const ekmek=Math.max(0,Math.round(num(document.getElementById("ekmekSel").value)));
-  document.getElementById("adetSel").value=adet;
-  const k=num(document.getElementById("katsayi").value);
-  const hedef=targetForSize(boy)*adet;
-  const costs=totalCost(urun,boy,adet,ayran,ekmek);
-  const etiket=recommendedLabelPrice(costs.total,hedef,k);
-  const netGelir=etiket*k;
-  const netKar=netGelir-costs.total;
-
-  document.getElementById("kEt").textContent=fmt(costs.et);
-  document.getElementById("kSalata").textContent=fmt(costs.salata);
-  document.getElementById("kPack").textContent=fmt(costs.pack);
-  document.getElementById("kTop").textContent=fmt(costs.total);
-
-  document.getElementById("kHedef").textContent=fmt(hedef);
-  document.getElementById("kEtiket").textContent=fmt(etiket);
-  document.getElementById("kNetGelir").textContent=fmt(netGelir);
-
-  const nk=document.getElementById("kNetKar");
-  nk.textContent=fmt(netKar);
-  nk.className="v "+(netKar>=hedef*0.98?"acc":(netKar>=0?"warn":"dng"));
-}
-
-function syncParamsFromUI(){
-  STATE.params.c=num(document.getElementById("c").value);
-  STATE.params.v=num(document.getElementById("v").value);
-  STATE.params.cv=num(document.getElementById("cv").value);
-  STATE.params.katsayi=num(document.getElementById("katsayi").value);
-  STATE.params.targetSmall=num(document.getElementById("targetSmall").value);
-  STATE.params.targetKg=num(document.getElementById("targetKg").value);
-}
-function pushParamsToUI(){
-  document.getElementById("c").value=STATE.params.c;
-  document.getElementById("v").value=STATE.params.v;
-  document.getElementById("cv").value=STATE.params.cv;
-  document.getElementById("katsayi").value=STATE.params.katsayi;
-  document.getElementById("targetSmall").value=STATE.params.targetSmall;
-  document.getElementById("targetKg").value=STATE.params.targetKg;
-}
-function save(){
-  syncParamsFromUI();
-  localStorage.setItem(LS_KEY, JSON.stringify(STATE));
-  setPill("Durum: kaydedildi ✅","ok");
-}
-function load(){
-  const raw=localStorage.getItem(LS_KEY);
-  if(!raw){setPill("Durum: kayıt yok","warn");return;}
+const STORE_KEY='otmaher_web_connection_v1';
+let dashboard=null;
+let autoTimer=null;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const n=v=>Number.isFinite(Number(v))?Number(v):0;
+const money=v=>new Intl.NumberFormat('tr-TR',{style:'currency',currency:'TRY',maximumFractionDigits:2}).format(n(v));
+const number=(v,d=0)=>new Intl.NumberFormat('tr-TR',{maximumFractionDigits:d}).format(n(v));
+const dateText=v=>{if(!v)return '—';const d=new Date(v);return isNaN(d)?String(v):d.toLocaleDateString('tr-TR')};
+const dateTime=v=>{if(!v)return '—';const d=new Date(v);return isNaN(d)?String(v):d.toLocaleString('tr-TR',{dateStyle:'short',timeStyle:'short'})};
+function cfg(){try{return JSON.parse(localStorage.getItem(STORE_KEY)||'{}')}catch{return {}}}
+function setCfg(x){localStorage.setItem(STORE_KEY,JSON.stringify(x))}
+function toast(msg){const el=$('toast');el.textContent=msg;el.classList.add('show');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),2400)}
+function connectionState(kind,text){$('liveDot').className='dot'+(kind==='ok'?' ok':kind==='bad'?' bad':'');$('liveText').textContent=text;$('settingsStatus').textContent=text}
+function apiRequestUrl(){const c=cfg();if(!c.url||!c.token)throw new Error('Bağlantı ayarları eksik.');const u=new URL(c.url);u.searchParams.set('view','dashboard');u.searchParams.set('token',c.token);u.searchParams.set('_t',Date.now());return u.toString()}
+async function loadDashboard(silent=false){
+  const c=cfg();if(!c.url||!c.token){connectionState('idle','Bağlantı bekleniyor');if(!silent)showView('settings');return}
+  connectionState('idle','Yenileniyor…');
   try{
-    STATE=JSON.parse(raw);
-    STATE.params=Object.assign({},DEFAULT.params,STATE.params||{});
-    STATE.prices=Object.assign({},DEFAULT.prices,STATE.prices||{});
-    STATE.packBySize=Object.assign({},DEFAULT.packBySize,STATE.packBySize||{});
-    STATE.recipes=Array.isArray(STATE.recipes)?STATE.recipes:structuredClone(DEFAULT.recipes);
-    pushParamsToUI();
-    renderAllUI();
-    setPill("Durum: yüklendi ✅","ok");
-  }catch(e){console.error(e);setPill("Durum: yükleme hatası","dng");}
+    const r=await fetch(apiRequestUrl(),{method:'GET',cache:'no-store',redirect:'follow'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const data=await r.json();
+    if(!data.ok)throw new Error(data.error||'API yanıtı başarısız');
+    dashboard=data;renderAll();connectionState('ok','Canlı bağlantı');
+    if(!silent)toast('OTMAHER verileri yenilendi');
+  }catch(e){connectionState('bad','Bağlantı hatası');$('settingsStatus').textContent='Hata: '+e.message;if(!silent)toast('Bağlantı kurulamadı: '+e.message)}
 }
-function resetAll(){
-  STATE=structuredClone(DEFAULT);
-  pushParamsToUI();
-  renderAllUI();
-  setPill("Durum: sıfırlandı","warn");
+function showView(id){document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===id));document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===id));window.scrollTo({top:0,behavior:'smooth'})}
+function statusPill(el,text){el.textContent=text||'—';el.className='pill '+(/KESİN|ÇALIŞIYOR|OK|YOK/i.test(text||'')?'ok':/HATA|EKSİK|KONTROL/i.test(text||'')?'bad':'warn')}
+function renderAll(){if(!dashboard)return;renderOverview();renderOrders();renderKitchens();renderHistory();renderMatching();renderSystem();$('updatedText').textContent='API: '+dateTime(dashboard.generatedAt)}
+function renderOverview(){
+  const o=dashboard.overview||{},a=dashboard.accumulated||{};
+  $('overviewSub').textContent=(o.date?dateText(o.date)+' • ':'')+(o.status||'OTMAHER canlı verileri');
+  const net=o.definiteNet!=null?o.definiteNet:o.temporaryNet;
+  $('kNet').textContent=money(net);$('kNet').className='value '+(n(net)<0?'red':'green');$('kNetSub').textContent=o.definiteNet!=null?'Kesin net kâr':(o.status||'Geçici net');
+  $('kRevenue').textContent=money(o.revenue);$('kOrders').textContent=number(o.orders);$('kMainProducts').textContent=number(o.mainProductCount,1);$('kAccNet').textContent=money(a.definiteNet);$('kAccSub').textContent=(a.startDate?dateText(a.startDate)+' → ':'')+number(a.calculatedDays)+' gün';
+  const hist=(dashboard.history||[]).slice(-8),max=Math.max(1,...hist.map(x=>Math.abs(n(x.temporaryNet))));
+  $('historyPill').textContent=hist.length+' gün';$('historyBars').innerHTML=hist.length?hist.map(x=>`<div class="barrow"><span>${esc(dateText(x.date).slice(0,5))}</span><div class="bartrack"><div class="barfill ${n(x.temporaryNet)<0?'neg':''}" style="width:${Math.max(3,Math.abs(n(x.temporaryNet))/max*100)}%"></div></div><b class="right ${n(x.temporaryNet)<0?'':'green'}">${esc(money(x.temporaryNet))}</b></div>`).join(''):'<div class="empty">Geçmiş veri yok</div>';
+  const sys=dashboard.system||{},issues=dashboard.issues||[];statusPill($('healthPill'),sys.status||o.status||'—');
+  const alerts=[];alerts.push({kind:/ÇALIŞIYOR/i.test(sys.status||'')?'ok':'bad',title:'Sistem durumu',text:(sys.status||'Bilinmiyor')+' • Son başarılı: '+dateTime(sys.lastSuccess)});if(issues.length)alerts.push({kind:'bad',title:issues.length+' kontrol bekleyen kalem',text:issues.slice(0,3).map(x=>x.product).join(' • ')});else alerts.push({kind:'ok',title:'Eşleştirme kontrolü',text:'Aktif sorun kaydı görünmüyor.'});if(a.lastDayStatus)alerts.push({kind:/KESİN/i.test(a.lastDayStatus)?'ok':'bad',title:'Son işlem günü',text:dateText(a.lastOperationDay)+' • '+a.lastDayStatus+' • '+money(a.lastDayTemporaryNet)});
+  $('alerts').innerHTML=alerts.map(x=>`<div class="alert ${x.kind}"><i class="mark"></i><div><b>${esc(x.title)}</b><div>${esc(x.text)}</div></div></div>`).join('');
+  $('recentOrdersWrap').innerHTML=ordersTableHtml((dashboard.recentOrders||[]).slice(0,7));
 }
-
-function renderAllUI(){
-  renderSelectors();renderPrices();renderPack();renderRecipes();refreshQuick();renderAll();
+function orderPlatform(o){return o.platform||'Bilinmiyor'}
+function ordersTableHtml(rows){if(!rows.length)return '<div class="empty">Sipariş kaydı yok</div>';return `<div class="tablewrap"><table><thead><tr><th>Saat / ID</th><th>Mutfak</th><th>Platform</th><th>Ürünler</th><th>Durum</th><th class="right">Ödeme</th><th class="right">İndirim</th></tr></thead><tbody>${rows.map(o=>`<tr><td><b>${esc(o.time||'—')}</b><div class="muted">${esc(o.orderId||o.orderNo||'—')}</div></td><td>${esc(o.kitchen||'—')}</td><td>${esc(orderPlatform(o))}</td><td>${esc((o.products||[]).join(', ')||'—')}</td><td><span class="pill ${/iptal/i.test(o.status||'')?'bad':'ok'}">${esc(o.status||'—')}</span></td><td class="right money">${esc(money(o.payment))}</td><td class="right money">${esc(money(o.discount))}</td></tr>`).join('')}</tbody></table></div>`}
+function renderOrders(){const rows=dashboard.recentOrders||[];$('ordersCount').textContent=rows.length+' kayıt';renderOrderFilter()}
+function renderOrderFilter(){if(!dashboard)return;const q=($('orderSearch').value||'').toLocaleLowerCase('tr-TR');const rows=(dashboard.recentOrders||[]).filter(o=>!q||[o.orderId,o.orderNo,o.kitchen,o.platform,o.status,...(o.products||[])].join(' ').toLocaleLowerCase('tr-TR').includes(q));$('ordersTable').innerHTML=ordersTableHtml(rows)}
+function renderKitchens(){
+  const rows=dashboard.breakdown||[];$('breakdownDateText').textContent='Mutfak ve platform performansı • '+dateText(dashboard.breakdownDate);$('breakdownPill').textContent=dateText(dashboard.breakdownDate);
+  const map={};rows.forEach(r=>{const k=r.kitchen||'Bilinmiyor';map[k]??={orders:0,revenue:0,cost:0,cut:0,vat:0,profit:0,issues:0};Object.keys(map[k]).forEach(key=>{if(key!=='issues')map[k][key]+=n(r[key])});map[k].issues+=n(r.issues)});
+  const preferred=['Acele Et Izgara','Cızzgara','Pilav Durağı'],names=[...new Set([...preferred,...Object.keys(map)])].filter(x=>map[x]);$('kitchenGrid').innerHTML=names.length?names.map(name=>{const v=map[name];return `<div class="card kitchen"><div class="sectionhd"><div class="kitchenname">${esc(name)}</div><span class="pill ${v.issues?'bad':'ok'}">${v.issues?v.issues+' kontrol':'Hazır'}</span></div><div class="miniGrid"><div class="mini"><span class="label">Sipariş</span><b>${number(v.orders)}</b></div><div class="mini"><span class="label">Ciro</span><b>${money(v.revenue)}</b></div><div class="mini"><span class="label">Ürün maliyeti</span><b>${money(v.cost)}</b></div><div class="mini"><span class="label">Sabit gider öncesi</span><b style="color:${v.profit<0?'var(--red)':'var(--green)'}">${money(v.profit)}</b></div></div></div>`}).join(''):'<div class="card section empty">Bu tarih için mutfak verisi yok</div>';
+  $('breakdownTable').innerHTML=rows.length?`<div class="tablewrap"><table><thead><tr><th>Mutfak</th><th>Platform</th><th class="right">Sipariş</th><th class="right">Ciro</th><th class="right">Maliyet</th><th class="right">Kesinti</th><th class="right">KDV</th><th class="right">Kâr*</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.kitchen)}</td><td>${esc(r.platform)}</td><td class="right">${number(r.orders)}</td><td class="right money">${money(r.revenue)}</td><td class="right money">${money(r.cost)}</td><td class="right money">${money(r.cut)}</td><td class="right money">${money(r.vat)}</td><td class="right money">${money(r.profit)}</td></tr>`).join('')}</tbody></table></div><div class="hint" style="margin-top:8px">* Günlük sabit gider payı öncesi.</div>`:'<div class="empty">Bu tarih için platform detayı yok</div>'
 }
+function renderHistory(){const rows=(dashboard.history||[]).slice().reverse();$('historyCount').textContent=rows.length+' gün';$('historyTable').innerHTML=rows.length?`<div class="tablewrap"><table><thead><tr><th>Tarih</th><th class="right">Sipariş</th><th class="right">Ana Ürün</th><th class="right">Ciro</th><th class="right">Geçici Net</th><th class="right">Kesin Net</th><th>Durum</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(dateText(r.date))}</td><td class="right">${number(r.orders)}</td><td class="right">${number(r.mainProducts,1)}</td><td class="right money">${money(r.revenue)}</td><td class="right money">${money(r.temporaryNet)}</td><td class="right money">${r.definiteNet==null?'—':money(r.definiteNet)}</td><td><span class="pill ${/KESİN$/i.test(r.status||'')?'ok':'bad'}">${esc(r.status||'—')}</span>${r.issue?`<div class="muted" style="margin-top:5px;max-width:440px">${esc(r.issue)}</div>`:''}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">Geçmiş veri yok</div>'}
+function renderMatching(){const s=dashboard.system||{},issues=dashboard.issues||[];$('mUnmatched').textContent=s.unmatched||'Yok';$('mIdMatched').textContent=number(s.idMatched);$('mNameMatched').textContent=number(s.nameMatched);$('issuesCount').textContent=issues.length+' sorun';$('issuesList').innerHTML=issues.length?issues.map(x=>`<div class="alert bad"><i class="mark"></i><div><b>${esc(x.product||'Kontrol')}</b><div>${esc([x.kitchen,x.platform,x.issue].filter(Boolean).join(' • '))}</div></div></div>`).join(''):'<div class="alert ok"><i class="mark"></i><div><b>Aktif eşleştirme sorunu yok</b><div>OTMAHER hesap tablosunda kontrol bekleyen ürün bulunmuyor.</div></div></div>'}
+function renderSystem(){const s=dashboard.system||{};statusPill($('systemPill'),s.status||'—');const fields=[['Durum',s.status],['Son deneme',dateTime(s.lastAttempt)],['Son başarılı senkron',dateTime(s.lastSuccess)],['Ardışık hata',s.consecutiveErrors],['Kapanmış sipariş',s.closedOrders],['Eşleşmeyen',s.unmatched||'Yok']];$('systemGrid').innerHTML=fields.map(([a,b])=>`<div class="mini"><span class="label">${esc(a)}</span><b>${esc(b??'—')}</b></div>`).join('')}
 
-document.getElementById("calcK").addEventListener("click",()=>{
-  const c=num(document.getElementById("c").value);
-  const v=num(document.getElementById("v").value);
-  const cv=num(document.getElementById("cv").value);
-  document.getElementById("katsayi").value=computeKatsayi(c,v,cv).toFixed(3);
-  setPill("Katsayı hesaplandı (yaklaşık)","warn");
-  refreshQuick();renderAll();
-});
-["c","v","cv","katsayi","targetSmall","targetKg"].forEach(id=>document.getElementById(id).addEventListener("input",()=>{refreshQuick()}));
-["adetSel","ayranSel","ekmekSel"].forEach(id=>document.getElementById(id).addEventListener("input",refreshQuick));
-document.getElementById("saveBtn").addEventListener("click",save);
-document.getElementById("loadBtn").addEventListener("click",load);
-document.getElementById("resetBtn").addEventListener("click",()=>{ if(confirm("Ekranı varsayılana döndüreyim mi?")) resetAll(); });
-document.getElementById("refreshAll").addEventListener("click",()=>{renderAll(); setPill("Özet yenilendi","ok");});
-
-pushParamsToUI();
-renderAllUI();
-setPill("Durum: hazır ✅","ok");
-
-
-const GUNLUK_KEY="otmaher_gunluk_v1";
-const VERGI_KEY="otmaher_vergi_gider_v1";
-function setTab(tab){document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id===tab));}
-document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));
-document.getElementById('gunlukKaydet').addEventListener('click',()=>{localStorage.setItem(GUNLUK_KEY,JSON.stringify({tarih:document.getElementById('gunlukTarih').value,not:document.getElementById('gunlukNot').value}));document.getElementById('gunlukDurum').textContent='Durum: kaydedildi ✅';});
-document.getElementById('gunlukYukle').addEventListener('click',()=>{const d=JSON.parse(localStorage.getItem(GUNLUK_KEY)||'{}');document.getElementById('gunlukTarih').value=d.tarih||'';document.getElementById('gunlukNot').value=d.not||'';document.getElementById('gunlukDurum').textContent='Durum: yüklendi ✅';});
-document.getElementById('vergiKaydet').addEventListener('click',()=>{localStorage.setItem(VERGI_KEY,JSON.stringify({vergi:document.getElementById('vergiTutar').value,gider:document.getElementById('giderTutar').value}));document.getElementById('vergiDurum').textContent='Durum: kaydedildi ✅';});
-document.getElementById('vergiYukle').addEventListener('click',()=>{const d=JSON.parse(localStorage.getItem(VERGI_KEY)||'{}');document.getElementById('vergiTutar').value=d.vergi||'';document.getElementById('giderTutar').value=d.gider||'';document.getElementById('vergiDurum').textContent='Durum: yüklendi ✅';});
-function raporYenile(){const g=JSON.parse(localStorage.getItem(GUNLUK_KEY)||'{}');const v=JSON.parse(localStorage.getItem(VERGI_KEY)||'{}');document.getElementById('raporCikti').textContent=JSON.stringify({gunluk:g,vergiGider:v,maliyetLocalStorageKey:LS_KEY},null,2);}
-document.getElementById('raporYenile').addEventListener('click',raporYenile);raporYenile();
+document.querySelectorAll('#nav button').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));document.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.go)));$('settingsTop').addEventListener('click',()=>showView('settings'));$('refreshBtn').addEventListener('click',()=>loadDashboard(false));$('orderSearch').addEventListener('input',renderOrderFilter);
+$('saveConnection').addEventListener('click',()=>{const url=$('apiUrl').value.trim(),token=$('apiToken').value.trim();if(!url||!token){toast('API adresi ve token gerekli');return}try{new URL(url)}catch{toast('API adresi geçersiz');return}setCfg({url,token});loadDashboard(false)});
+$('testConnection').addEventListener('click',()=>{const c={url:$('apiUrl').value.trim(),token:$('apiToken').value.trim()};if(c.url&&c.token)setCfg(c);loadDashboard(false)});
+$('forgetConnection').addEventListener('click',()=>{localStorage.removeItem(STORE_KEY);dashboard=null;$('apiUrl').value='';$('apiToken').value='';connectionState('idle','Bağlantı bekleniyor');toast('Bu cihazdaki bağlantı bilgileri silindi')});
+(function init(){const c=cfg();$('apiUrl').value=c.url||'';$('apiToken').value=c.token||'';if(c.url&&c.token)loadDashboard(true);else connectionState('idle','Bağlantı bekleniyor');autoTimer=setInterval(()=>{if(document.visibilityState==='visible'&&cfg().url&&cfg().token)loadDashboard(true)},60000)})();
 </script>
 </body>
 </html>
